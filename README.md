@@ -6,8 +6,6 @@ Instituto Superior Técnico, Universidade de Lisboa
 
 This document describes the organization of the project for the Ambient Intelligence / Ambientes Inteligentes (AmI) course.
 
-The document concludes with a calendar containing all the deadlines.
-
 For any questions regarding this document, please contact:  
 [meic-ami@disciplinas.tecnico.ulisboa.pt](mailto:meic-ami@disciplinas.tecnico.ulisboa.pt)
 
