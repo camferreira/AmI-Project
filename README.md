@@ -92,11 +92,12 @@ You can also do an open search on sites like [Semantic Scholar](https://www.sema
 
 ### 2.5.2 Technical requirements
 
-The planned project will need to include:
+The following elements constitute a **core requirement shared by all projects** developed within the course.  
+Every proposed project must include:
 
-- sensors;
-- actuators;
-- network communication.
+- Sensors - to acquire data from the environment;
+- Actuators - to produce physical or logical actions based on system decisions;
+- Connectivity - use network protocols to enable data exchange between components, systems, or external services.
 
 ### 2.5.3 Document structure (mandatory)
 
@@ -107,10 +108,11 @@ _Summarize and cite the selected scientific papers, defining the main concepts, 
 _Expected size: approximately 200 words for each paper._  
 3. Problem  
 _Given the chosen topic area, what is the specific problem being solved?_  
-_What is the value to be added by the proposed solution?_  
 _Who are the stakeholders?_  
+_What is the value to be added by the proposed solution?_  
   3.1. Solution Requirements  
-  _Enumerate solution requirements as a list of statements with numbered identifiers (R1, R2, ...)._  
+  _Enumerate solution requirements as a list of statements with numbered identifiers (R1, R2, ...)._
+  _Indent and cluster to better organize requirements (R1.1, R1.2, R2.1, ...)._  
   _Ensure each requirement is concise, specific, and testable, stating expected behavior without suggesting a specific solution._  
   3.2. Assumptions  
   _Which conditions are assumed to be true for the solution to operate as intended?_  
@@ -132,10 +134,8 @@ _Who are the stakeholders?_
   5.2 Software  
   _Specify the tools and libraries to be utilized and their intended functions._  
 6. Plan  
-  6.1 Team organization  
-  _Assign responsibilities to team members._  
-  6.2 Tasks and milestones  
   _Outline the tasks for the project development._  
+  _Assign responsibilities to team members._  
   _Define milestones of increasing functionality of the solution: basic, intermediate, advanced._  
 7. Bibliography  
   _Provide the authors, title, and publication details of scientific and technical documents referenced in the proposal text._  
@@ -143,6 +143,9 @@ _Who are the stakeholders?_
   _According to the Técnico template, as detailed further down._
   
 Target size of document: 1000 words, limit 1500 words.
+
+The diagrams are very important for communicating the design.
+You can use [UML](https://www.omg.org/uml/), [DFD](https://www.ibm.com/think/topics/data-flow-diagram), [C4](https://c4model.com/), or other notation you prefer.
 
 ### 2.5.4 Additional document requirements
 
