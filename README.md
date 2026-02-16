@@ -127,7 +127,7 @@ _What is the value to be added by the proposed solution?_
   _Choose the programming language(s) for implementation._  
   _Describe the distinct devices and how they will be assembled and interconnected._  
   _Select communication technologies and protocols._  
-  _[See suggestions](https://github.com/tecnico-ami/awesome-ambient-intelligence)._  
+  _See [hardware](https://github.com/tecnico-iot/awesome-iot-ambient-intelligence#hardware) and [software](https://github.com/tecnico-iot/awesome-iot-ambient-intelligence#software) suggestions._  
 5. Bill-of-materials  
   5.1 Hardware  
   _Provide a list of required hardware components and their respective purposes._  
