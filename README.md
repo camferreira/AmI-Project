@@ -188,10 +188,10 @@ The report structure is the following:
 1. Introduction  
 2. Literature Review  
 3. Problem  
-  3.1. Solution Requirements  
-  3.2. Assumptions  
+  3.1 Solution Requirements  
+  3.2 Assumptions  
 4. Proposed solution  
-  4.1. Overview  
+  4.1 Overview  
   4.2 Logical design  
   4.3 Technology selection  
 5. Bill-of-materials  
@@ -296,33 +296,6 @@ The project grade will take into account:
 - Live Demonstration (10%).
 
 If the demonstration is not live, then you forfeit that evaluation component.
-
-# 3. Calendar
-
-The relevant dates for the project are shown in the following calendar (all dates are in **2024**).
-
-| **Stage**                    | **Deadline**                                                                      |
-| -----------------------------|-----------------------------------------------------------------------------------|
-| Assemble and register team   | Until Monday, February 19th, 20:00 or in the first lab                            |
-| Present team and idea        | In the lab session of Tuesday, February 20th                                      |
-| Write proposal               | Until Friday, February 23rd, 17:00                                                |
-| Develop project              | Until Wednesday, March 20th. Present progress in each lab for feedback            |
-| Prepare demonstration        | Start preparing midway through the development                                    |
-| Write report                 | Regularly revise the document as progress is made                                 |
-| Submit code and report       | **Code**: Wednesday, March 20th, 17:00. **Report:** Friday, March 22nd, 17:00     |
-| Confirm presentation session | Until Friday, March 22nd. Contact faculty if you have any issue with the schedule |
-| Present and defend           | Sessions start Monday, March 25th. Submit presentation and media on the same day  |
-
-## 3.1. Updates
-
-IMPORTANT: keep track of the course [web site](https://fenix.tecnico.ulisboa.pt/disciplinas/AI3/2023-2024/2-semestre) for announcements.
-
-If there are changes to this document, they can be consulted in the _Git Commit History_.
-
-## 3.2. Final words
-
-We wish you all the best in this technical venture.
-Make the most of it!
 
 ----
 
