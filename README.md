@@ -308,20 +308,23 @@ If the demonstration is not live, then you forfeit that evaluation component.
 
 The relevant dates for the project are shown in the following calendar (all dates are in **2026**).
 
-| **Stage**                    | **Deadline**                                                                      |
-| -----------------------------|-----------------------------------------------------------------------------------|
-| Assemble and register team   | Until Friday, February 20th, 20:00 or in the first lab                            |
-| Present team and ideas       | In the lab session of Tuesday, February 24th                                      |
-| Write proposal               | Until Friday, February 27th, 20:00                                                |
-| Receive proposal feedback and approval               | In the lab session of Tuesday, March 3rd                                        |
-| Receive feedback - basic               | In the lab session of Tuesday, March 10th                                        |
-| Receive feedback - intermediate               | In the lab session of Tuesday, March 17th                                        |
-| Prepare demonstration        | Start preparing midway through the development                                    |
-| Receive feedback- advanced             | In the lab session of Tuesday, March 24th            |
-| Write report                 | Regularly revise the document as progress is made                                 |
-| Submit code and report       | **Code**: Tuesday, March 24th, 20:00. **Report:** Thursday, March 26th, 20:00     |
-| Confirm presentation session | Until Friday, March 27th. Contact faculty if you have any issue with the schedule |
-| Present and defend           | Sessions on Tuesday, March 31st. Submit presentation and media on the same day, until 20:00 |
+| **Stage**                              | **Deadline**                                                                        |
+| ---------------------------------------|-------------------------------------------------------------------------------------|
+| Assemble and register team             | Until Friday, February 20th, 20:00 or in the first lab                              |
+| Present team and ideas                 | In the lab session of Tuesday, February 24th                                        |
+| Write and submit proposal              | Until Friday, February 27th, 20:00                                                  |
+| Receive proposal feedback and approval | In the lab session of Tuesday, March 3rd                                            |
+| Iterate design and code                | _In the following weeks..._                                                         |
+| Receive feedback - basic               | In the lab session of Tuesday, March 10th                                           |
+| Write report                           | _Keep the document up-to-date as progress is made..._                               |
+| Receive feedback - intermediate        | In the lab session of Tuesday, March 17th                                           |
+| Prepare demonstration                  | _Prepare and test how to show the solution working in a clear and engaging way..._  |
+| Receive feedback- advanced             | In the lab session of Tuesday, March 24th                                           |
+| Submit code                            | Tuesday, March 24th, 20:00                                                          |
+| Submit report                          | Thursday, March 26th, 20:00                                                         |
+| Confirm presentation session           | Until Friday, March 27th. _Contact faculty if you have any issue with the schedule_ |
+| Present and defend                     | Sessions on Tuesday, March 31st                                                     |
+| Submit presentation and media          | Same day as presentation, until 20:00                                               |
 
 ## 3.1 Updates
 
@@ -331,11 +334,14 @@ If there are changes to this document, they can be consulted in the _Git Commit 
 
 ## 3.2 Use of Artificial Intelligence
 
-The Técnico [_Use of AI Guidelines_](https://tecnico.ulisboa.pt/en/news/campus-community/tecnico-apresenta-guia-para-a-utilizacao-responsavel-da-inteligencia-artificial/) defines levels of use.
-For this project, they are:
+The Técnico [_"Use of AI Guidelines"_](https://tecnico.ulisboa.pt/en/news/campus-community/tecnico-apresenta-guia-para-a-utilizacao-responsavel-da-inteligencia-artificial/) define different levels of AI use.
 
-- proposal and report - level 1 - yellow;
-- code - level 2 - green.
+For this project, the applicable levels are:
+
+- Proposal and report — Level 1 (Yellow);
+- Code — Level 2 (Green).
+
+Reference: [full document (in Portuguese)](guia-ia2025.pdf)
 
 ### 3.2.1 Use of AI in proposal and report
 
@@ -390,7 +396,7 @@ Example:
 
 ## 3.3 Final words
 
-We wish you all the best in this technical venture.
+We wish you all the best in this technical venture.  
 Make the most of it and we look forward to see what you will achieve!
 
 ----
