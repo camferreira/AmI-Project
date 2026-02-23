@@ -116,11 +116,11 @@ _What is the value to be added by the proposed solution?_
   _Ensure each requirement is concise, specific, and testable, stating expected behavior without suggesting a specific solution._  
   3.2. Assumptions  
   _Which conditions are assumed to be true for the solution to operate as intended?_  
-4. Proposed solution  
+4. Prototype  
   4.1. Overview  
-  _Present an architectural diagram and provide a brief explanation of all components._  
+  _Present an architectural diagram and provide a brief explanation of all components of the prototype._  
   4.2 Logical design  
-  _Identify the main functions to be performed by the solution._  
+  _Identify the main functions to be performed by the prototype._  
   _Identify communicating entities and the messages they will exchange with a sequence or collaboration diagram._  
   4.3 Technology selection  
   _Identify the primary development platform (e.g. Arduino IDE, Android Studio, etc.)._  
@@ -194,7 +194,7 @@ The report structure is the following:
 3. Problem  
   3.1 Solution Requirements  
   3.2 Assumptions  
-4. Proposed solution  
+4. Prototype  
   4.1 Overview  
   4.2 Logical design  
   4.3 Technology selection  
@@ -210,7 +210,7 @@ The report structure is the following:
 
 The structure of the report document is similar to the structure of the proposal but the _Plan_ (old Section 6) is replaced by _Evaluation_ (new Section 6).
 The _Teamwork_ (6.1) should review how the work was divided by the team.
-The _Results_ (6.2) must present the main results and state which requirements (from Section 3.1) were actually satisfied (_satisfied_, _partially satisfied_, _not satisfied_) with brief explanations for each one.  
+The _Results_ (6.2) must present the main results and state which solution requirements (from Section 3.1) were actually satisfied by the prototype (_satisfied_, _partially satisfied_, _not satisfied_), with brief explanations for each one. It is expected that a prototype does not satisfy all requirements but it should achieve the most important ones.  
 Finally, the _Conclusion_ (Section 7) should make a critical assessment of what was achieved, pointing out what the solution does well and where it could be improved in the future.
 
 All sections must be updated to accurately reflect the final solution.
