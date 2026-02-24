@@ -20,10 +20,7 @@ Currently, passenger choose train cars without real-time information about carri
 
 ## Literature Review
 
-[Estimating congestion in train cars
-by using BLE Signals](https://yukimat.jp/data/pdf/paper/BLECE-Train_c_202205_taya_DICPS.pdf)
-
-[A Review of Passenger Counting in Public Transport Concepts with Solution Proposal Based on Image Processing and Machine Learning](https://www.mdpi.com/2673-4117/5/4/172) 
+<!-- This should comment on the literature and refrence the Bibliography.  -->
 
 ## Problem
 
@@ -39,7 +36,7 @@ FR-1: Occupancy Detection
 - The system shall measure the occupancy level of each carriage in real time.
 
 FR-2: Data Processing  
-- The system shall convert raw (weight) data into an occupancy percentage (0–100%).
+- The system shall convert raw (weight) data into an occupancy percentage.
 
 FR-3: Status Classification  
 - The system shall classify occupancy into predetermined states.
@@ -50,11 +47,14 @@ FR-4: Visual Feedback
 FR-5: Real-Time Updates  
 - The system shall update occupancy indicators with an adequate frequency.
 
-FR-6: Multi Carriage Integration
-- The system shall operate independently for each carriage but allow centralized monitoring (optional advanced feature).
+FR-6: System Independence
+- The system shall operate independently but allow centralized intervention.
 
-FR-7: External Management
-- 
+FR-7: External Integration
+- The system shall integrate with a centralized communication system to allow monitoring, updates, diagnostics and data collection.
+
+FR-8: Predictive Load Estimation
+- The system shall use historical occupancy data and time-series prediction models to estimate expected occupancy at upcoming stations.
 
 **Quality Attributes**
 
@@ -71,10 +71,7 @@ QA-4: Usability
 - The color system shall be intuitive and understandable without training.
 
 QA-5: Visibility  
-- LED indicators shall be visible in:
-    - Daylight
-    - Night
-    - Rain conditions
+- LED indicators shall be visible irrespective of weather conditions.
 
 QA-6: Scalability  
 
