@@ -80,10 +80,13 @@ QA-6: Scalability
 
 AI-1: Context Awareness  
 - The system should limit ambiguity.
+
 AI-2: Non-Intrusiveness
 - The system shall not require passenger interaction.
+
 AI-3: Adaptivity  
 - The system shall dynamically update occupancy state without manual intervention.
+
 AI-4: Human-Centered Design
 - Information shall reduce stress and improve passenger comfort.
 
