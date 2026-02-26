@@ -33,7 +33,7 @@ As a result, rail systems operate below optimal efficiency despite having availa
 **Functional Requirements**
 
 FR-1: Occupancy Detection  
-- The system shall measure the occupancy level of each carriage in real time.
+- The system shall measure the occupancy level of each carriage.
 
 FR-2: Data Processing  
 - The system shall convert raw (weight) data into an occupancy percentage.
@@ -103,7 +103,15 @@ AI-4: Human-Centered Design
 ## Prototype
 
 ### Overview
-Francisca
+
+
+<p align="center">
+    <img src="./assets/images/prototype_illustration.png" width="500" style="border-radius: 20px;">
+</p>
+
+Our prototype simulates a miniaturized train station environment. Weight sensors are installed along the train tracks to measure carriage load distribution. An embedded addressable RGB LED strip is integrated into the platform to provide real-time visual feedback to passengers, indicating carriage occupancy levels.
+
+All components are connected to a microcontroller, which processes the sensor data and controls the LED strip accordingly. The microcontroller also transmits processed occupancy metrics and diagnostic data to a centralized mangament system (CMS). The CMS unit aggregates data from multiple stations, enabling system-wide load balancing, analytics, predictive modeling for passenger distribution and operational monitoring.
 
 ### Logical design
 
