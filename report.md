@@ -73,7 +73,7 @@ QA-4: Usability
 QA-5: Visibility  
 - LED indicators shall be visible irrespective of weather conditions.
 
-QA-6: Scalability  
+<!-- QA-6: Scalability   -->
 
 
 **Ambient Intelligence Requirements**
@@ -91,7 +91,14 @@ AI-4: Human-Centered Design
 - Information shall reduce stress and improve passenger comfort.
 
 ### Assumptions
-Francisca
+
+- Trains have multiple **uniform** carriages.
+- Trains stop at station in a constant manner.
+- Trains signialing and schedual system are available.
+- Network connectivity exists for centralized system communication.
+- Passengers arrive at the platform before the train arrives.
+- Passengers organize themselves without prior knowledge,in a non-uniform distribution across the platform.
+- Passengers have basic literacy to understand color-coded occupancy states.
 
 ## Prototype
 
