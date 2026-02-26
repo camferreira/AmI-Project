@@ -93,6 +93,7 @@ AI-4: Human-Centered Design
 ### Assumptions
 
 - Trains have multiple **uniform** carriages.
+- Trains at the start of the line are empty.
 - Trains stop at station in a constant manner.
 - Trains signialing and schedual system are available.
 - Network connectivity exists for centralized system communication.
@@ -111,9 +112,14 @@ AI-4: Human-Centered Design
 
 Our prototype simulates a miniaturized train station environment. Weight sensors are installed along the train tracks to measure carriage load distribution. An embedded addressable RGB LED strip is integrated into the platform to provide real-time visual feedback to passengers, indicating carriage occupancy levels.
 
-All components are connected to a microcontroller, which processes the sensor data and controls the LED strip accordingly. The microcontroller also transmits processed occupancy metrics and diagnostic data to a centralized mangament system (CMS). The CMS unit aggregates data from multiple stations, enabling system-wide load balancing, analytics, predictive modeling for passenger distribution and operational monitoring.
+All components are connected to a microcontroller, which processes the sensor data and controls the LED strip accordingly. The microcontroller also transmits processed occupancy metrics and diagnostic data to a centralized mangament system (CMS). The CMS unit aggregates data from multiple stations, enabling system-wide load balancing, analytics, predictive modeling and operational monitoring. It is also responsible for coordinating the LED status at each train station.
 
 ### Logical design
+
+The prototype will simulate two pivotal events, the **start of the train line** and a subsequent train stations.
+
+At the start the each train car can be considered unoccupied. After the train has left the initial station, the occupation data is sent to the CMS. The CMS can send instructions to stations to inform the LED system what is the occupation status or other lighting configurations. This is done consistency until the last train station.
+
 
 ### Technology selection
 
