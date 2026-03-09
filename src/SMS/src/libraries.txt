@@ -4,4 +4,5 @@
 # Automatically added based on includes:
 Adafruit NeoPixel
 
+ArduinoJson
 HX711
