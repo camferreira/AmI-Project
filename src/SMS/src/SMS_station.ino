@@ -656,11 +656,12 @@ void setup() {
   animBoot();
   trainState=NO_TRAIN; breathVal=0; breathDir=1;
 
-  for (uint8_t z=0; z<3; z++) {
-    scale[z].begin(HX_DOUT[z], HX_SCK[z]);
-    scale[z].set_scale(cfg.calibFactor[z]);
-    scale[z].tare();
-  }
+  // this is blockin. sensor not pluged in mite not leave.
+  // for (uint8_t z=0; z<3; z++) {
+  //   scale[z].begin(HX_DOUT[z], HX_SCK[z]);
+  //   scale[z].set_scale(cfg.calibFactor[z]);
+  //   scale[z].tare();
+  // }
 
   sendEvent("BOOT", "SMS ready");
 }
