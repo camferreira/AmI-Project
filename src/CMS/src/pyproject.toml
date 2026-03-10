@@ -1,0 +1,14 @@
+[project]
+name = "sms-cms"
+version = "1.0.0"
+description = "Central Management System for SMS Arduino node"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0.0",
+    "flask-socketio>=5.3.6",
+    "pyserial>=3.5",
+    "eventlet>=0.35.1",
+]
+
+[project.scripts]
+cms = "app:main"

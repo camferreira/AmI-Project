@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMS · Central Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #080c10;
+  --surface:   #0d1117;
+  --border:    #1e2836;
+  --border2:   #263040;
+  --text:      #c8d8e8;
+  --text-dim:  #4a6070;
+  --text-mute: #2a3840;
+  --accent:    #f0b429;
+  --accent2:   #0a7ea4;
+  --green:     #22c55e;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+  --blue:      #3b82f6;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-head: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.5; overflow: hidden; }
+body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); pointer-events:none; z-index:1000; }
+
+/* ── Shell ── */
+.shell { display:grid; grid-template-rows:48px 36px 1fr; grid-template-columns:1fr 320px; grid-template-areas:"header header" "tabs tabs" "main sidebar"; height:100vh; }
+
+/* ── Header ── */
+header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0 20px; background:var(--surface); border-bottom:1px solid var(--border); z-index:10; }
+.logo { font-family:var(--font-head); font-weight:700; font-size:18px; letter-spacing:0.15em; color:var(--accent); text-transform:uppercase; }
+.logo span { color:var(--text-dim); font-weight:300; }
+.hdr-div { width:1px; height:24px; background:var(--border2); }
+.car-badge { font-family:var(--font-mono); font-size:13px; color:var(--text-dim); }
+.car-badge strong { color:var(--text); font-size:15px; margin-left:6px; }
+.conn-bar { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.conn-select { background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:4px 8px; border-radius:3px; outline:none; cursor:pointer; }
+.conn-select:focus { border-color:var(--accent2); }
+.btn { font-family:var(--font-head); font-weight:600; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; border:1px solid var(--border2); background:transparent; color:var(--text); padding:5px 14px; border-radius:3px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.primary { border-color:var(--accent2); color:var(--accent2); }
+.btn.primary:hover { background:var(--accent2); color:#fff; }
+.btn.danger { border-color:var(--red); color:var(--red); }
+.btn.danger:hover { background:var(--red); color:#fff; }
+.conn-dot { width:8px; height:8px; border-radius:50%; background:var(--text-mute); transition:background 0.3s; flex-shrink:0; }
+.conn-dot.connected { background:var(--green); box-shadow:0 0 6px var(--green); }
+.conn-dot.connecting { background:var(--amber); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── Tabs ── */
+.tab-bar { grid-area:tabs; display:flex; align-items:stretch; background:var(--surface); border-bottom:1px solid var(--border); padding:0 20px; gap:0; }
+.tab { font-family:var(--font-head); font-weight:600; font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); padding:0 18px; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; display:flex; align-items:center; gap:6px; }
+.tab:hover { color:var(--text); }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-dot { width:6px; height:6px; border-radius:50%; background:currentColor; opacity:0.6; }
+
+/* ── Tab pages ── */
+.tab-page { display:none; }
+.tab-page.active { display:contents; }
+/* pages that aren't grid children use their own layout */
+.tab-page-full { display:none; grid-area:main; overflow:hidden; }
+.tab-page-full.active { display:flex; }
+.tpf-dashboard { flex-direction:column; gap:16px; padding:20px; overflow-y:auto; }
+.tpf-statemachine { align-items:center; justify-content:center; padding:20px; overflow:auto; }
+.tpf-demo { flex-direction:column; }
+
+/* ── Sidebar (shared) ── */
+.sidebar { grid-area:sidebar; display:flex; flex-direction:column; border-left:1px solid var(--border); overflow:hidden; }
+
+/* ── Panel ── */
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:4px; }
+.panel-header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid var(--border); }
+.panel-title { font-family:var(--font-head); font-weight:600; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-dim); }
+
+/* ── State badge ── */
+.state-badge { font-family:var(--font-mono); font-size:11px; padding:2px 8px; border-radius:2px; border:1px solid var(--border2); color:var(--text-dim); text-transform:uppercase; letter-spacing:0.1em; transition:all 0.3s; }
+.state-badge.no_train   { color:var(--text-dim); border-color:var(--border2); }
+.state-badge.expected   { color:var(--blue);   border-color:var(--blue);   box-shadow:0 0 8px rgba(59,130,246,0.2); }
+.state-badge.arriving   { color:var(--accent); border-color:var(--accent); box-shadow:0 0 8px rgba(240,180,41,0.3); animation:pulse 0.6s infinite; }
+.state-badge.in_service { color:var(--green);  border-color:var(--green);  box-shadow:0 0 8px rgba(34,197,94,0.2); }
+.state-badge.leaving    { color:var(--amber);  border-color:var(--amber);  box-shadow:0 0 8px rgba(245,158,11,0.2); animation:pulse 0.8s infinite; }
+
+/* ══════════════════════════════════════
+   TAB 1 — DASHBOARD
+   ══════════════════════════════════════ */
+/* dashboard layout applied via .tab-page-full.active + per-tab classes */
+
+.twin-wrap { padding:24px 20px 20px; }
+.train-car-svg { width:100%; height:auto; display:block; }
+.zone-indicators { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:16px; }
+.zone-card { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:12px 14px; position:relative; overflow:hidden; transition:border-color 0.4s; }
+.zone-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--zone-color,var(--border)); transition:background 0.4s; }
+.zone-glow { position:absolute; inset:0; opacity:0; transition:opacity 0.4s; pointer-events:none; background:radial-gradient(ellipse at 50% 0%,var(--zone-color,transparent) 0%,transparent 70%); }
+.zone-label-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.zone-num { font-family:var(--font-head); font-weight:700; font-size:11px; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; }
+.zone-status-pill { font-family:var(--font-mono); font-size:10px; padding:1px 6px; border-radius:2px; text-transform:uppercase; letter-spacing:0.05em; border:1px solid currentColor; transition:all 0.4s; }
+.zone-kg { font-family:var(--font-mono); font-size:22px; color:var(--text); line-height:1; margin-bottom:6px; }
+.zone-kg span { font-size:11px; color:var(--text-dim); margin-left:2px; }
+.zone-bar-wrap { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:4px; }
+.zone-bar { height:100%; border-radius:2px; background:var(--zone-color,var(--border2)); transition:width 0.5s cubic-bezier(0.4,0,0.2,1),background 0.4s; width:0%; }
+.zone-pct { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-align:right; }
+
+/* command categories */
+.cmd-category { padding:10px 14px 0; }
+.cmd-cat-title { font-family:var(--font-head); font-weight:700; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--text-mute); margin-bottom:6px; padding-bottom:4px; border-bottom:1px solid var(--border); }
+.cmd-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:6px; padding:0 14px 10px; }
+.cmd-btn { font-family:var(--font-head); font-weight:600; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; background:var(--bg); border:1px solid var(--border2); color:var(--text); padding:7px 10px; border-radius:3px; cursor:pointer; transition:all 0.15s; text-align:center; }
+.cmd-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(240,180,41,0.04); }
+.cmd-btn.c-diag   { border-color:#334155; color:#64748b; }
+.cmd-btn.c-diag:hover  { border-color:var(--accent2); color:var(--accent2); background:rgba(10,126,164,0.06); }
+.cmd-btn.c-cfg    { border-color:#334155; color:#64748b; }
+.cmd-btn.c-cfg:hover   { border-color:#a78bfa; color:#a78bfa; background:rgba(167,139,250,0.06); }
+.cmd-btn.c-lc     { border-color:#334155; color:#64748b; }
+.cmd-btn.c-lc:hover    { border-color:var(--green); color:var(--green); background:rgba(34,197,94,0.06); }
+.cmd-btn.c-arr    { border-color:rgba(59,130,246,0.4); color:var(--blue); }
+.cmd-btn.c-arr:hover   { background:rgba(59,130,246,0.08); }
+.cmd-btn.c-lev    { border-color:rgba(245,158,11,0.4); color:var(--amber); }
+.cmd-btn.c-lev:hover   { background:rgba(245,158,11,0.08); }
+.cmd-btn.c-danger { border-color:rgba(239,68,68,0.4); color:var(--red); }
+.cmd-btn.c-danger:hover{ background:rgba(239,68,68,0.08); }
+.dir-row { display:flex; gap:6px; padding:0 14px 12px; }
+.dir-row .cmd-btn { flex:1; }
+
+/* ══════════════════════════════════════
+   TAB 2 — STATE MACHINE
+   ══════════════════════════════════════ */
+/* statemachine layout via .tpf-statemachine */
+
+.sm-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; }
+.sm-svg { max-width:900px; width:100%; height:auto; }
+
+/* ══════════════════════════════════════
+   TAB 3 — DEMO FLOW
+   ══════════════════════════════════════ */
+/* demo layout via .tpf-demo */
+
+.demo-layout { display:grid; grid-template-columns:340px 1fr; flex:1; overflow:hidden; }
+.demo-steps { padding:16px; border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+.demo-step { border:1px solid var(--border); border-radius:4px; padding:10px 12px; cursor:pointer; transition:all 0.2s; position:relative; }
+.demo-step:hover { border-color:var(--border2); }
+.demo-step.active { border-color:var(--accent); background:rgba(240,180,41,0.04); }
+.demo-step.done { border-color:var(--green); opacity:0.6; }
+.demo-step.done::after { content:'✓'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--green); font-family:var(--font-mono); font-size:12px; }
+.demo-step-num { font-family:var(--font-mono); font-size:10px; color:var(--text-mute); margin-bottom:2px; }
+.demo-step-title { font-family:var(--font-head); font-weight:600; font-size:13px; letter-spacing:0.05em; color:var(--text); }
+.demo-step-desc { font-size:11px; color:var(--text-dim); margin-top:3px; line-height:1.4; }
+.demo-step-phase { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; }
+.phase-boot     { color:#64748b; }
+.phase-expected { color:var(--blue); }
+.phase-arriving { color:var(--accent); }
+.phase-service  { color:var(--green); }
+.phase-depart   { color:var(--amber); }
+
+.demo-right { display:flex; flex-direction:column; overflow:hidden; }
+.demo-detail { padding:20px; border-bottom:1px solid var(--border); }
+.demo-detail-title { font-family:var(--font-head); font-weight:700; font-size:18px; letter-spacing:0.05em; color:var(--text); margin-bottom:4px; }
+.demo-detail-desc  { font-size:13px; color:var(--text-dim); margin-bottom:14px; line-height:1.5; }
+.demo-json-label { font-family:var(--font-head); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-mute); margin-bottom:6px; }
+.demo-json { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:12px 14px; font-family:var(--font-mono); font-size:12px; color:var(--accent2); line-height:1.7; white-space:pre; overflow-x:auto; }
+.demo-json .key   { color:#7dd3fc; }
+.demo-json .str   { color:#86efac; }
+.demo-json .num   { color:#fda4af; }
+.demo-json .kw    { color:var(--amber); }
+
+.demo-controls { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); }
+.demo-progress { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.demo-progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.4s; }
+.demo-step-counter { font-family:var(--font-mono); font-size:11px; color:var(--text-mute); white-space:nowrap; }
+
+.demo-expected-log { flex:1; overflow-y:auto; padding:12px 20px; }
+.demo-exp-title { font-family:var(--font-head); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-mute); margin-bottom:8px; }
+.demo-exp-entry { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; gap:10px; }
+.demo-exp-entry .dir-rx { color:var(--blue); }
+.demo-exp-entry .dir-tx { color:var(--amber); }
+
+/* ── Log sidebar (shared) ── */
+.log-wrap { flex:1; overflow-y:auto; padding:8px 0; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; }
+.log-entry { display:grid; grid-template-columns:72px 16px 1fr; gap:6px; align-items:baseline; padding:3px 12px; font-family:var(--font-mono); font-size:10.5px; line-height:1.5; }
+.log-entry:hover { background:rgba(255,255,255,0.02); }
+.log-time { color:var(--text-mute); }
+.log-dir-rx { color:var(--blue); font-size:9px; }
+.log-dir-tx { color:var(--amber); font-size:9px; }
+.log-raw { color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; }
+.log-raw.hl { color:var(--text); }
+.log-entry.new { animation:logfade 1s ease forwards; }
+@keyframes logfade { from{background:rgba(59,130,246,0.08)} to{background:transparent} }
+.log-controls { display:flex; align-items:center; gap:8px; padding:8px 12px; border-top:1px solid var(--border); }
+.log-count { font-family:var(--font-mono); font-size:10px; color:var(--text-mute); margin-left:auto; }
+.manual-wrap { padding:10px 12px; border-top:1px solid var(--border); display:flex; gap:6px; }
+.manual-input { flex:1; background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--font-mono); font-size:11px; padding:5px 8px; border-radius:3px; outline:none; }
+.manual-input:focus { border-color:var(--accent2); }
+.manual-input::placeholder { color:var(--text-mute); }
+
+/* ── Toast ── */
+.toast-wrap { position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:6px; z-index:9999; }
+.toast { font-family:var(--font-mono); font-size:11px; padding:8px 14px; border-radius:3px; border:1px solid var(--border2); background:var(--surface); color:var(--text); animation:toastin 0.2s ease, toastout 0.3s ease 2.7s forwards; max-width:300px; }
+.toast.ok  { border-color:var(--green); color:var(--green); }
+.toast.err { border-color:var(--red);   color:var(--red); }
+@keyframes toastin  { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+@keyframes toastout { from{opacity:1} to{opacity:0} }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">SMS <span>CMS</span></div>
+  <div class="hdr-div"></div>
+  <div class="car-badge">CAR <strong id="hdr-car">—</strong></div>
+  <div class="hdr-div"></div>
+  <div id="hdr-state" class="state-badge no_train">no_train</div>
+  <div class="conn-bar">
+    <select id="port-select" class="conn-select"><option value="">— port —</option></select>
+    <button class="btn primary" id="btn-connect">Connect</button>
+    <button class="btn danger"  id="btn-disconnect" style="display:none">Disconnect</button>
+    <div class="conn-dot" id="conn-dot"></div>
+  </div>
+</header>
+
+<!-- ── Tab bar ── -->
+<nav class="tab-bar">
+  <div class="tab active" data-tab="dashboard"><span class="tab-dot"></span>Dashboard</div>
+  <div class="tab" data-tab="statemachine"><span class="tab-dot"></span>State Machine</div>
+  <div class="tab" data-tab="demo"><span class="tab-dot"></span>Demo Flow</div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     TAB 1 — DASHBOARD
+     ══════════════════════════════════════ -->
+<div id="tab-dashboard" class="tab-page-full tpf-dashboard active">
+
+  <!-- Digital twin -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Digital Twin — Car Side View</span>
+      <button class="btn" onclick="sendCmd({cmd:'GET_STATUS'})">Refresh</button>
+    </div>
+    <div class="twin-wrap">
+      <svg class="train-car-svg" viewBox="0 0 700 160" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1a2535"/>
+            <stop offset="100%" stop-color="#0d1520"/>
+          </linearGradient>
+        </defs>
+        <line x1="10" y1="148" x2="690" y2="148" stroke="#1e2836" stroke-width="3"/>
+        <line x1="10" y1="154" x2="690" y2="154" stroke="#1e2836" stroke-width="3"/>
+        <g stroke="#141d28" stroke-width="2">
+          <line x1="40"  y1="148" x2="40"  y2="154"/><line x1="90"  y1="148" x2="90"  y2="154"/>
+          <line x1="140" y1="148" x2="140" y2="154"/><line x1="190" y1="148" x2="190" y2="154"/>
+          <line x1="240" y1="148" x2="240" y2="154"/><line x1="290" y1="148" x2="290" y2="154"/>
+          <line x1="340" y1="148" x2="340" y2="154"/><line x1="390" y1="148" x2="390" y2="154"/>
+          <line x1="440" y1="148" x2="440" y2="154"/><line x1="490" y1="148" x2="490" y2="154"/>
+          <line x1="540" y1="148" x2="540" y2="154"/><line x1="590" y1="148" x2="590" y2="154"/>
+          <line x1="640" y1="148" x2="640" y2="154"/>
+        </g>
+        <circle cx="110" cy="143" r="12" fill="#0d1117" stroke="#1e2836" stroke-width="2"/>
+        <circle cx="110" cy="143" r="5"  fill="#1e2836"/>
+        <circle cx="590" cy="143" r="12" fill="#0d1117" stroke="#1e2836" stroke-width="2"/>
+        <circle cx="590" cy="143" r="5"  fill="#1e2836"/>
+        <circle cx="185" cy="143" r="12" fill="#0d1117" stroke="#1e2836" stroke-width="2"/>
+        <circle cx="185" cy="143" r="5"  fill="#1e2836"/>
+        <circle cx="515" cy="143" r="12" fill="#0d1117" stroke="#1e2836" stroke-width="2"/>
+        <circle cx="515" cy="143" r="5"  fill="#1e2836"/>
+        <path d="M55,128 L55,28 Q55,18 65,18 L635,18 Q645,18 645,28 L645,128 Z" fill="url(#bodyGrad)" stroke="#1e2836" stroke-width="1.5"/>
+        <rect x="65" y="12" width="570" height="8" rx="3" fill="#0a0f18" stroke="#1e2836" stroke-width="1"/>
+        <rect id="z1-win" x="85"  y="38" width="155" height="72" rx="4" fill="#0a0f18" stroke="#1e2836" stroke-width="1.5" opacity="0.9"/>
+        <rect id="z1-led" x="85"  y="38" width="155" height="72" rx="4" fill="#000000" opacity="0.18"/>
+        <rect id="z2-win" x="272" y="38" width="156" height="72" rx="4" fill="#0a0f18" stroke="#1e2836" stroke-width="1.5" opacity="0.9"/>
+        <rect id="z2-led" x="272" y="38" width="156" height="72" rx="4" fill="#000000" opacity="0.18"/>
+        <rect id="z3-win" x="460" y="38" width="155" height="72" rx="4" fill="#0a0f18" stroke="#1e2836" stroke-width="1.5" opacity="0.9"/>
+        <rect id="z3-led" x="460" y="38" width="155" height="72" rx="4" fill="#000000" opacity="0.18"/>
+        <line x1="245" y1="28" x2="245" y2="128" stroke="#1e2836" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <line x1="455" y1="28" x2="455" y2="128" stroke="#1e2836" stroke-width="1.5" stroke-dasharray="4,4"/>
+        <text x="162" y="82" text-anchor="middle" font-family="'Share Tech Mono'" font-size="11" fill="#2a3840" letter-spacing="2">ZONE 1</text>
+        <text x="350" y="82" text-anchor="middle" font-family="'Share Tech Mono'" font-size="11" fill="#2a3840" letter-spacing="2">ZONE 2</text>
+        <text x="537" y="82" text-anchor="middle" font-family="'Share Tech Mono'" font-size="11" fill="#2a3840" letter-spacing="2">ZONE 3</text>
+        <rect x="240" y="108" width="12" height="18" rx="1" fill="#0a0f18" stroke="#1e2836" stroke-width="1"/>
+        <rect x="448" y="108" width="12" height="18" rx="1" fill="#0a0f18" stroke="#1e2836" stroke-width="1"/>
+        <rect x="638" y="55" width="6" height="18" rx="2" fill="#f0b429" opacity="0.6"/>
+        <rect x="56"  y="55" width="6" height="18" rx="2" fill="#ef4444" opacity="0.4"/>
+      </svg>
+      <div class="zone-indicators">
+        <div class="zone-card" id="zone-card-1">
+          <div class="zone-glow" id="zone-glow-1"></div>
+          <div class="zone-label-row">
+            <span class="zone-num">Zone 1</span>
+            <span class="zone-status-pill" id="z1-pill" style="color:var(--text-mute);border-color:var(--text-mute)">—</span>
+          </div>
+          <div class="zone-kg" id="z1-kg">0.00 <span>kg</span></div>
+          <div class="zone-bar-wrap"><div class="zone-bar" id="z1-bar"></div></div>
+          <div class="zone-pct" id="z1-pct">0%</div>
+        </div>
+        <div class="zone-card" id="zone-card-2">
+          <div class="zone-glow" id="zone-glow-2"></div>
+          <div class="zone-label-row">
+            <span class="zone-num">Zone 2</span>
+            <span class="zone-status-pill" id="z2-pill" style="color:var(--text-mute);border-color:var(--text-mute)">—</span>
+          </div>
+          <div class="zone-kg" id="z2-kg">0.00 <span>kg</span></div>
+          <div class="zone-bar-wrap"><div class="zone-bar" id="z2-bar"></div></div>
+          <div class="zone-pct" id="z2-pct">0%</div>
+        </div>
+        <div class="zone-card" id="zone-card-3">
+          <div class="zone-glow" id="zone-glow-3"></div>
+          <div class="zone-label-row">
+            <span class="zone-num">Zone 3</span>
+            <span class="zone-status-pill" id="z3-pill" style="color:var(--text-mute);border-color:var(--text-mute)">—</span>
+          </div>
+          <div class="zone-kg" id="z3-kg">0.00 <span>kg</span></div>
+          <div class="zone-bar-wrap"><div class="zone-bar" id="z3-bar"></div></div>
+          <div class="zone-pct" id="z3-pct">0%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Commands by category -->
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Commands</span></div>
+
+    <div class="cmd-category">
+      <div class="cmd-cat-title">Diagnostics</div>
+    </div>
+    <div class="cmd-grid">
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'PING'})">Ping</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'GET_STATUS'})">Get Status</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'GET_WEIGHT'})">Get Weight</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'GET_CONFIG'})">Get Config</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'GET_RAW'})">Get Raw</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'GET_UPTIME'})">Get Uptime</button>
+      <button class="cmd-btn c-diag" onclick="sendCmd({cmd:'SELFTEST'})">Selftest</button>
+    </div>
+
+    <div class="cmd-category">
+      <div class="cmd-cat-title">Configuration</div>
+    </div>
+    <div class="cmd-grid">
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'TARE'})">Tare All</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'PUSH_ON'})">Push On</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'PUSH_OFF'})">Push Off</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SAVE_CONFIG'})">Save Config</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'LOAD_CONFIG'})">Load Config</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SET_BANDS',medium:50,full:80})">Set Bands</button>
+      <button class="cmd-btn c-danger" onclick="sendCmd({cmd:'RESET'})">Reset Node</button>
+    </div>
+
+    <div class="cmd-category">
+      <div class="cmd-cat-title">Train Lifecycle</div>
+    </div>
+    <div class="cmd-grid">
+      <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_EXPECTED',zones:[{zone:1,r:0,g:120,b:0,label:'free'},{zone:2,r:0,g:120,b:0,label:'free'},{zone:3,r:0,g:120,b:0,label:'free'}]})">Train Expected</button>
+      <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_EXPECTED_CLEAR'})">Clear Expected</button>
+      <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_BOARDING'})">Boarding</button>
+      <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_DOORS_CLOSING'})">Doors Closing</button>
+    </div>
+    <div class="dir-row">
+      <button class="cmd-btn c-arr" onclick="sendCmd({cmd:'TRAIN_ARRIVING',dir:'ltr'})">▶ Arriving LTR</button>
+      <button class="cmd-btn c-arr" onclick="sendCmd({cmd:'TRAIN_ARRIVING',dir:'rtl'})">◀ Arriving RTL</button>
+      <button class="cmd-btn c-lev" onclick="sendCmd({cmd:'TRAIN_LEAVING',dir:'ltr'})">▶ Leaving LTR</button>
+      <button class="cmd-btn c-lev" onclick="sendCmd({cmd:'TRAIN_LEAVING',dir:'rtl'})">◀ Leaving RTL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 2 — STATE MACHINE
+     ══════════════════════════════════════ -->
+<div id="tab-statemachine" class="tab-page-full tpf-statemachine">
+  <svg class="sm-svg" viewBox="0 0 860 520" xmlns="http://www.w3.org/2000/svg" font-family="'Share Tech Mono',monospace">
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#2a3840"/>
+      </marker>
+      <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#22c55e"/>
+      </marker>
+      <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+      </marker>
+      <marker id="arr-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+      </marker>
+      <marker id="arr-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#f0b429"/>
+      </marker>
+      <filter id="sm-glow">
+        <feGaussianBlur stdDeviation="3" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+
+    <!-- Title -->
+    <text x="430" y="30" text-anchor="middle" font-family="'Barlow Condensed'" font-size="16" font-weight="700" fill="#4a6070" letter-spacing="4">SMS STATE MACHINE</text>
+
+    <!-- ── States ── -->
+    <!-- NO_TRAIN (left) -->
+    <g id="sm-no_train">
+      <rect x="30" y="200" width="150" height="64" rx="6" fill="#0d1117" stroke="#2a3840" stroke-width="1.5"/>
+      <rect x="30" y="200" width="150" height="4"  rx="3" fill="#4a6070"/>
+      <text x="105" y="228" text-anchor="middle" font-size="13" font-weight="bold" fill="#c8d8e8" letter-spacing="1">NO_TRAIN</text>
+      <text x="105" y="247" text-anchor="middle" font-size="9"  fill="#4a6070">idle breath · blue pulse</text>
+    </g>
+
+    <!-- EXPECTED -->
+    <g id="sm-expected">
+      <rect x="230" y="80" width="150" height="64" rx="6" fill="#0d1117" stroke="#3b82f6" stroke-width="1.5" filter="url(#sm-glow)"/>
+      <rect x="230" y="80" width="150" height="4"  rx="3" fill="#3b82f6"/>
+      <text x="305" y="108" text-anchor="middle" font-size="13" font-weight="bold" fill="#93c5fd" letter-spacing="1">EXPECTED</text>
+      <text x="305" y="127" text-anchor="middle" font-size="9"  fill="#4a6070">predicted colors shown</text>
+    </g>
+
+    <!-- ARRIVING -->
+    <g id="sm-arriving">
+      <rect x="460" y="80" width="150" height="64" rx="6" fill="#0d1117" stroke="#f0b429" stroke-width="1.5" filter="url(#sm-glow)"/>
+      <rect x="460" y="80" width="150" height="4"  rx="3" fill="#f0b429"/>
+      <text x="535" y="108" text-anchor="middle" font-size="13" font-weight="bold" fill="#fde68a" letter-spacing="1">ARRIVING</text>
+      <text x="535" y="127" text-anchor="middle" font-size="9"  fill="#4a6070">white pixel sweep →</text>
+    </g>
+
+    <!-- IN_SERVICE -->
+    <g id="sm-in_service">
+      <rect x="600" y="200" width="160" height="64" rx="6" fill="#0d1117" stroke="#22c55e" stroke-width="1.5" filter="url(#sm-glow)"/>
+      <rect x="600" y="200" width="160" height="4"  rx="3" fill="#22c55e"/>
+      <text x="680" y="228" text-anchor="middle" font-size="13" font-weight="bold" fill="#86efac" letter-spacing="1">IN_SERVICE</text>
+      <text x="680" y="247" text-anchor="middle" font-size="9"  fill="#4a6070">live weight · LED colors</text>
+    </g>
+
+    <!-- LEAVING -->
+    <g id="sm-leaving">
+      <rect x="460" y="340" width="150" height="64" rx="6" fill="#0d1117" stroke="#f59e0b" stroke-width="1.5" filter="url(#sm-glow)"/>
+      <rect x="460" y="340" width="150" height="4"  rx="3" fill="#f59e0b"/>
+      <text x="535" y="368" text-anchor="middle" font-size="13" font-weight="bold" fill="#fcd34d" letter-spacing="1">LEAVING</text>
+      <text x="535" y="387" text-anchor="middle" font-size="9"  fill="#4a6070">pixel-off sweep →</text>
+    </g>
+
+    <!-- ── BOOT arrow ── -->
+    <line x1="105" y1="140" x2="105" y2="198" stroke="#2a3840" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+    <rect x="60" y="110" width="90" height="24" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="105" y="126" text-anchor="middle" font-size="9" fill="#4a6070">BOOT / RESET</text>
+
+    <!-- ── NO_TRAIN → EXPECTED ── -->
+    <path d="M180,220 Q205,145 228,120" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+    <rect x="168" y="160" width="110" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="223" y="173" text-anchor="middle" font-size="9" fill="#93c5fd">TRAIN_EXPECTED</text>
+
+    <!-- ── EXPECTED → ARRIVING ── -->
+    <line x1="380" y1="112" x2="458" y2="112" fill="none" stroke="#f0b429" stroke-width="1.5" marker-end="url(#arr-accent)"/>
+    <rect x="384" y="98" width="72" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="420" y="111" text-anchor="middle" font-size="9" fill="#fde68a">TRAIN_ARRIVING</text>
+
+    <!-- ── NO_TRAIN → ARRIVING (direct) ── -->
+    <path d="M180,210 Q310,80 458,100" fill="none" stroke="#f0b429" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr-accent)"/>
+    <text x="295" y="62" text-anchor="middle" font-size="9" fill="#78716c">TRAIN_ARRIVING (direct)</text>
+
+    <!-- ── ARRIVING → IN_SERVICE ── -->
+    <path d="M610,112 Q640,160 660,198" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
+    <rect x="622" y="145" width="78" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="661" y="158" text-anchor="middle" font-size="9" fill="#86efac">anim done →</text>
+    <text x="661" y="168" text-anchor="middle" font-size="8" fill="#4a6070">TRAIN_IN_SERVICE</text>
+
+    <!-- ── IN_SERVICE → LEAVING ── -->
+    <path d="M660,264 Q640,300 614,338" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr-amber)"/>
+    <rect x="622" y="293" width="80" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="662" y="306" text-anchor="middle" font-size="9" fill="#fcd34d">TRAIN_LEAVING</text>
+
+    <!-- ── LEAVING → NO_TRAIN ── -->
+    <path d="M460,375 Q280,400 183,250" fill="none" stroke="#2a3840" stroke-width="1.5" marker-end="url(#arr)"/>
+    <rect x="276" y="408" width="78" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="315" y="421" text-anchor="middle" font-size="9" fill="#4a6070">anim done →</text>
+    <text x="315" y="431" text-anchor="middle" font-size="8" fill="#4a6070">TRAIN_GONE</text>
+
+    <!-- ── EXPECTED → NO_TRAIN (cancel) ── -->
+    <path d="M230,130 Q160,150 182,198" fill="none" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+    <rect x="130" y="148" width="90" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
+    <text x="175" y="161" text-anchor="middle" font-size="9" fill="#fca5a5">EXPECTED_CLEAR</text>
+
+    <!-- ── Weight change loop on IN_SERVICE ── -->
+    <path d="M762,232 Q820,232 820,270 Q820,310 762,310 Q762,275 762,265" fill="none" stroke="#22c55e" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-green)"/>
+    <text x="836" y="262" text-anchor="middle" font-size="8" fill="#4a6070" transform="rotate(90,836,270)">WEIGHT_CHANGE</text>
+    <text x="836" y="278" text-anchor="middle" font-size="8" fill="#4a6070" transform="rotate(90,836,278)">SET_ZONE / SET_ALL</text>
+
+    <!-- ── Legend ── -->
+    <g transform="translate(30,440)">
+      <rect x="0" y="0" width="800" height="60" rx="4" fill="#0d1117" stroke="#1e2836" stroke-width="1"/>
+      <text x="14" y="18" font-family="'Barlow Condensed'" font-size="10" font-weight="700" letter-spacing="3" fill="#2a3840">LEGEND</text>
+      <line x1="14" y1="28" x2="40" y2="28" stroke="#f0b429" stroke-width="2" marker-end="url(#arr-accent)"/>
+      <text x="46" y="32" font-size="9" fill="#4a6070">Lifecycle transition</text>
+      <line x1="160" y1="28" x2="186" y2="28" stroke="#f0b429" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-accent)"/>
+      <text x="192" y="32" font-size="9" fill="#4a6070">Optional path</text>
+      <line x1="290" y1="28" x2="316" y2="28" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+      <text x="322" y="32" font-size="9" fill="#4a6070">Cancel / error path</text>
+      <line x1="450" y1="28" x2="476" y2="28" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-green)"/>
+      <text x="482" y="32" font-size="9" fill="#4a6070">Self-loop (spontaneous event)</text>
+
+      <!-- State descriptions row 2 -->
+      <circle cx="15"  cy="48" r="4" fill="#4a6070"/>
+      <text x="24"  y="52" font-size="9" fill="#4a6070">no_train: breath idle</text>
+      <circle cx="155" cy="48" r="4" fill="#3b82f6"/>
+      <text x="164" cy="52" y="52" font-size="9" fill="#4a6070">expected: predicted colors</text>
+      <circle cx="310" cy="48" r="4" fill="#f0b429"/>
+      <text x="319" y="52" font-size="9" fill="#4a6070">arriving/leaving: animation</text>
+      <circle cx="470" cy="48" r="4" fill="#22c55e"/>
+      <text x="479" y="52" font-size="9" fill="#4a6070">in_service: live data + LEDs</text>
+    </g>
+
+    <!-- ── Current state highlight (updated by JS) ── -->
+    <rect id="sm-highlight" x="0" y="0" width="0" height="0" rx="6" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.15"/>
+  </svg>
+</div>
+
+<!-- ══════════════════════════════════════
+     TAB 3 — DEMO FLOW
+     ══════════════════════════════════════ -->
+<div id="tab-demo" class="tab-page-full tpf-demo">
+  <div class="demo-layout">
+    <!-- Steps list -->
+    <div class="demo-steps" id="demo-steps-list"></div>
+
+    <!-- Right panel -->
+    <div class="demo-right">
+      <div class="demo-detail" id="demo-detail">
+        <div class="demo-detail-title" id="demo-step-title">Select a step</div>
+        <div class="demo-detail-desc"  id="demo-step-desc">Choose a step from the left to see the command and expected response.</div>
+        <div class="demo-json-label">COMMAND  →  SMS</div>
+        <div class="demo-json" id="demo-json-tx">—</div>
+        <div class="demo-json-label" style="margin-top:12px">EXPECTED RESPONSE  ←  SMS</div>
+        <div class="demo-json" id="demo-json-rx">—</div>
+      </div>
+      <div class="demo-controls">
+        <button class="btn" id="demo-prev" onclick="demoPrev()">← Prev</button>
+        <button class="btn primary" id="demo-send" onclick="demoSend()">Send Command</button>
+        <button class="btn" id="demo-next" onclick="demoNext()">Next →</button>
+        <div class="demo-progress"><div class="demo-progress-fill" id="demo-prog"></div></div>
+        <span class="demo-step-counter" id="demo-counter">0 / 0</span>
+      </div>
+      <div class="demo-expected-log">
+        <div class="demo-exp-title">Step Execution Log</div>
+        <div id="demo-exec-log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sidebar (always visible) ── -->
+<div class="sidebar">
+  <div class="panel-header" style="border-bottom:1px solid var(--border)">
+    <span class="panel-title">Event Log</span>
+    <button class="btn" onclick="clearLog()">Clear</button>
+  </div>
+  <div class="log-wrap" id="log-wrap"></div>
+  <div class="log-controls">
+    <label style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
+      <input type="checkbox" id="auto-scroll" checked style="accent-color:var(--accent2)"> autoscroll
+    </label>
+    <span class="log-count" id="log-count">0 events</span>
+  </div>
+  <div class="manual-wrap">
+    <input class="manual-input" id="manual-input" placeholder='{"cmd":"PING"}' onkeydown="if(event.key==='Enter') sendManual()">
+    <button class="btn primary" onclick="sendManual()">Send</button>
+  </div>
+</div>
+
+</div><!-- .shell -->
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+// ══════════════════════════════════════════
+// SOCKET + STATE
+// ══════════════════════════════════════════
+const socket = io();
+let logCount = 0;
+
+socket.on('connect',    () => setConnDot('connecting'));
+socket.on('disconnect', () => setConnDot('off'));
+socket.on('state', applyState);
+socket.on('log',   appendLog);
+
+function applyState(s) {
+  document.getElementById('hdr-car').textContent = s.car || '—';
+  const badge = document.getElementById('hdr-state');
+  badge.textContent = s.train_state.replace(/_/g,' ');
+  badge.className   = 'state-badge ' + s.train_state;
+
+  const conn = s.serial_status === 'connected';
+  setConnDot(conn ? 'connected' : 'off');
+  document.getElementById('btn-connect').style.display    = conn ? 'none' : '';
+  document.getElementById('btn-disconnect').style.display = conn ? '' : 'none';
+
+  s.zones.forEach(updateZone);
+  smHighlight(s.train_state);
+}
+
+function updateZone(z) {
+  const i   = z.zone;
+  const col = `rgb(${z.r},${z.g},${z.b})`;
+  const hex = '#'+[z.r,z.g,z.b].map(v=>v.toString(16).padStart(2,'0')).join('');
+  const pct = typeof z.pct === 'number' ? z.pct : 0;
+  const kg  = parseFloat(z.kg) || 0;
+
+  const led = document.getElementById(`z${i}-led`);
+  if (led) {
+    led.setAttribute('fill', hex);
+    led.style.filter = (z.r||z.g||z.b) ? `drop-shadow(0 0 10px ${hex})` : '';
+  }
+  const card = document.getElementById(`zone-card-${i}`);
+  card.style.setProperty('--zone-color', col);
+  card.style.borderColor = (z.r||z.g||z.b) ? `rgba(${z.r},${z.g},${z.b},0.35)` : '';
+  document.getElementById(`zone-glow-${i}`).style.opacity = (z.r||z.g||z.b) ? '0.12' : '0';
+
+  const pill = document.getElementById(`z${i}-pill`);
+  pill.textContent = z.label||'—';
+  pill.style.color = pill.style.borderColor = col;
+
+  document.getElementById(`z${i}-kg`).innerHTML = `${kg.toFixed(2)} <span>kg</span>`;
+  document.getElementById(`z${i}-bar`).style.width = pct + '%';
+  document.getElementById(`z${i}-pct`).textContent = pct + '%';
+}
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-page-full').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const id = 'tab-' + t.dataset.tab;
+    document.getElementById(id).classList.add('active');
+  });
+});
+
+// ══════════════════════════════════════════
+// STATE MACHINE HIGHLIGHT
+// ══════════════════════════════════════════
+const SM_RECTS = {
+  no_train:   {x:30,  y:200, w:150, h:64},
+  expected:   {x:230, y:80,  w:150, h:64},
+  arriving:   {x:460, y:80,  w:150, h:64},
+  in_service: {x:600, y:200, w:160, h:64},
+  leaving:    {x:460, y:340, w:150, h:64},
+};
+function smHighlight(state) {
+  const r = SM_RECTS[state];
+  const el = document.getElementById('sm-highlight');
+  if (!r || !el) return;
+  el.setAttribute('x', r.x - 4);
+  el.setAttribute('y', r.y - 4);
+  el.setAttribute('width',  r.w + 8);
+  el.setAttribute('height', r.h + 8);
+}
+
+// ══════════════════════════════════════════
+// LOG
+// ══════════════════════════════════════════
+function appendLog(e) {
+  const wrap = document.getElementById('log-wrap');
+  const el   = document.createElement('div');
+  el.className = `log-entry ${e.direction} new`;
+  const isJ = e.raw.startsWith('{');
+  el.innerHTML = `<span class="log-time">${e.time}</span><span class="${e.direction==='rx'?'log-dir-rx':'log-dir-tx'}">${e.direction==='rx'?'◀':'▶'}</span><span class="log-raw${isJ?' hl':''}">${escHtml(e.raw)}</span>`;
+  wrap.appendChild(el);
+  logCount++;
+  document.getElementById('log-count').textContent = logCount + ' events';
+  if (document.getElementById('auto-scroll').checked) wrap.scrollTop = wrap.scrollHeight;
+  while (wrap.children.length > 200) wrap.removeChild(wrap.firstChild);
+}
+function clearLog() {
+  document.getElementById('log-wrap').innerHTML = '';
+  logCount = 0;
+  document.getElementById('log-count').textContent = '0 events';
+}
+
+// ══════════════════════════════════════════
+// COMMANDS
+// ══════════════════════════════════════════
+async function sendCmd(cmd) {
+  try {
+    const r = await fetch('/api/command', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)});
+    const d = await r.json();
+    if (!d.ok) toast('Send failed','err');
+  } catch(e) { toast('Network error','err'); }
+}
+function sendManual() {
+  const inp = document.getElementById('manual-input');
+  const raw = inp.value.trim();
+  if (!raw) return;
+  try { sendCmd(JSON.parse(raw)); inp.value=''; }
+  catch(e) { toast('Invalid JSON','err'); }
+}
+
+// ══════════════════════════════════════════
+// SERIAL
+// ══════════════════════════════════════════
+document.getElementById('btn-connect').onclick = async () => {
+  const port = document.getElementById('port-select').value;
+  if (!port) { toast('Select a port first','err'); return; }
+  setConnDot('connecting');
+  const r = await fetch('/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({port,baud:9600})});
+  const d = await r.json();
+  d.ok ? toast('Connected to '+port,'ok') : toast(d.error||'Connect failed','err');
+};
+document.getElementById('btn-disconnect').onclick = async () => {
+  await fetch('/api/disconnect',{method:'POST'});
+  toast('Disconnected','ok');
+};
+async function loadPorts() {
+  const d = await (await fetch('/api/ports')).json();
+  const sel = document.getElementById('port-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— port —</option>';
+  d.ports.forEach(p => {
+    const o = document.createElement('option');
+    o.value = o.textContent = p;
+    if (p===cur) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+loadPorts();
+setInterval(loadPorts, 5000);
+
+// ══════════════════════════════════════════
+// DEMO FLOW
+// ══════════════════════════════════════════
+const DEMO_STEPS = [
+  { phase:'boot', title:'Ping Node', desc:'First thing the CMS does — check the node is alive. If no PONG in 2 seconds, mark offline.',
+    tx:{cmd:'PING'},
+    rx:'{"type":"PONG","car":"A3","uptime_ms":1243}' },
+  { phase:'boot', title:'Get Config', desc:'Fetch current calibration factors and settings. CMS checks if they match expected values.',
+    tx:{cmd:'GET_CONFIG'},
+    rx:'{"type":"CONFIG","car":"A3","brightness":255,"push_interval_ms":0,"weight_threshold":"2.00","pct_medium":50,"pct_full":80,"zones":[...]}' },
+  { phase:'boot', title:'Set Car ID', desc:'Assign this node its identity. Included in all subsequent responses.',
+    tx:{cmd:'SET_CAR_ID',id:'A3'},
+    rx:'{"type":"ACK","cmd":"SET_CAR_ID","status":"ok"}' },
+  { phase:'boot', title:'Tare Sensors', desc:'Zero all three load cells. Must be done with the platform empty.',
+    tx:{cmd:'TARE'},
+    rx:'{"type":"ACK","cmd":"TARE","status":"ok"}' },
+  { phase:'boot', title:'Save Config', desc:'Persist settings to EEPROM so they survive a power cycle.',
+    tx:{cmd:'SAVE_CONFIG'},
+    rx:'{"type":"ACK","cmd":"SAVE_CONFIG","status":"ok"}' },
+  { phase:'boot', title:'Selftest', desc:'Flash each zone LED and verify all three HX711 sensors respond. CMS must see sensor_ok:true on all zones before proceeding.',
+    tx:{cmd:'SELFTEST'},
+    rx:'{"type":"SELFTEST","car":"A3","zones":[{"zone":1,"sensor_ok":true,"raw":142,"kg":"0.34"},{"zone":2,"sensor_ok":true,"raw":98,"kg":"0.23"},{"zone":3,"sensor_ok":true,"raw":110,"kg":"0.26"}]}' },
+  { phase:'boot', title:'Get Status', desc:'Full snapshot sync for the dashboard. CMS now has the complete picture.',
+    tx:{cmd:'GET_STATUS'},
+    rx:'{"type":"STATUS","car":"A3","train_state":"no_train","zones":[{"zone":1,"r":0,"g":120,"b":0,"label":"free","kg":"0.00","pct":0},...]}' },
+
+  { phase:'expected', title:'Train Expected', desc:'Train A3 is 2 minutes out. CMS pushes predicted occupancy from the previous journey. LEDs show green/amber/red. Idle breath stops.',
+    tx:{cmd:'TRAIN_EXPECTED',zones:[{zone:1,r:0,g:120,b:0,label:'free'},{zone:2,r:120,g:60,b:0,label:'medium'},{zone:3,r:0,g:120,b:0,label:'free'}]},
+    rx:'{"type":"ACK","cmd":"TRAIN_EXPECTED","status":"ok"}' },
+
+  { phase:'arriving', title:'Train Arriving', desc:'Train enters the station from the left. White pixel sweep plays left→right. CMS waits for TRAIN_IN_SERVICE event before continuing.',
+    tx:{cmd:'TRAIN_ARRIVING',dir:'ltr'},
+    rx:'{"type":"ACK","cmd":"TRAIN_ARRIVING","status":"ok"}\n// ... animation plays ...\n{"type":"EVENT","event":"TRAIN_IN_SERVICE","car":"A3"}' },
+  { phase:'arriving', title:'Boarding Signal', desc:'Doors open. Double-pulse animation signals passengers to board.',
+    tx:{cmd:'TRAIN_BOARDING'},
+    rx:'{"type":"ACK","cmd":"TRAIN_BOARDING","status":"ok"}' },
+  { phase:'arriving', title:'Enable Push', desc:'Start periodic weight push every 3 seconds so CMS gets live load data during boarding.',
+    tx:{cmd:'SET_PUSH_INTERVAL',ms:3000},
+    rx:'{"type":"ACK","cmd":"SET_PUSH_INTERVAL","status":"ok"}' },
+
+  { phase:'service', title:'Weight Change — Medium', desc:'Passengers board zone 1. SMS detects weight crossing the medium threshold and fires an event. CMS updates the LED color.',
+    tx:{cmd:'SET_ZONE',zone:1,r:120,g:60,b:0,label:'medium'},
+    rx:'// Spontaneous event from SMS:\n{"type":"EVENT","event":"WEIGHT_CHANGE","car":"A3","zone":1,"kg":"52.10","pct":69}\n// CMS responds:\n{"type":"ACK","cmd":"SET_ZONE","status":"ok"}' },
+  { phase:'service', title:'Weight Change — Full', desc:'Zone 1 reaches capacity. CMS pushes red.',
+    tx:{cmd:'SET_ZONE',zone:1,r:120,g:0,b:0,label:'full'},
+    rx:'{"type":"ACK","cmd":"SET_ZONE","status":"ok"}' },
+  { phase:'service', title:'Dashboard Poll', desc:'CMS requests a full snapshot for the web dashboard refresh.',
+    tx:{cmd:'GET_STATUS'},
+    rx:'{"type":"STATUS","car":"A3","train_state":"in_service","zones":[{"zone":1,"r":120,"g":0,"b":0,"label":"full","kg":"71.20","pct":95},{"zone":2,"r":120,"g":60,"b":0,"label":"medium","kg":"48.30","pct":64},{"zone":3,"r":0,"g":120,"b":0,"label":"free","kg":"12.10","pct":16}]}' },
+
+  { phase:'depart', title:'Stop Push', desc:'Dwell timer expired. CMS stops the periodic weight push.',
+    tx:{cmd:'PUSH_OFF'},
+    rx:'{"type":"ACK","cmd":"PUSH_OFF","status":"ok"}' },
+  { phase:'depart', title:'Doors Closing', desc:'5× amber blink warns passengers. Zone colors restore after.',
+    tx:{cmd:'TRAIN_DOORS_CLOSING'},
+    rx:'{"type":"ACK","cmd":"TRAIN_DOORS_CLOSING","status":"ok"}' },
+  { phase:'depart', title:'Log Final Load', desc:'CMS records departure load for analytics before the train leaves.',
+    tx:{cmd:'GET_WEIGHT'},
+    rx:'{"type":"WEIGHT","car":"A3","zones":[{"zone":1,"raw":198400,"kg":"71.20","pct":95},{"zone":2,"raw":142000,"kg":"48.30","pct":64},{"zone":3,"raw":31200,"kg":"12.10","pct":16}]}' },
+  { phase:'depart', title:'Train Leaving', desc:'Pixels turn off one by one left→right. CMS waits for TRAIN_GONE, then loops back to expected state for next service.',
+    tx:{cmd:'TRAIN_LEAVING',dir:'ltr'},
+    rx:'{"type":"ACK","cmd":"TRAIN_LEAVING","status":"ok"}\n// ... animation plays ...\n{"type":"EVENT","event":"TRAIN_GONE","car":"A3"}' },
+];
+
+const PHASE_LABELS = {boot:'Boot / Handshake', expected:'Train Expected', arriving:'Arriving', service:'In Service', depart:'Departure'};
+const PHASE_CLASS  = {boot:'phase-boot', expected:'phase-expected', arriving:'phase-arriving', service:'phase-service', depart:'phase-depart'};
+
+let demoIdx = 0;
+
+function renderDemoSteps() {
+  const wrap = document.getElementById('demo-steps-list');
+  wrap.innerHTML = '';
+  let lastPhase = '';
+  DEMO_STEPS.forEach((s, i) => {
+    if (s.phase !== lastPhase) {
+      const ph = document.createElement('div');
+      ph.style.cssText = 'font-family:var(--font-head);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;padding:8px 4px 2px;color:var(--text-mute);border-top:1px solid var(--border);margin-top:4px;';
+      ph.textContent = PHASE_LABELS[s.phase] || s.phase;
+      if (lastPhase) wrap.appendChild(ph);
+      lastPhase = s.phase;
+    }
+    const el = document.createElement('div');
+    el.className = 'demo-step' + (i===demoIdx?' active':'') + (i<demoIdx?' done':'');
+    el.innerHTML = `<div class="demo-step-num">STEP ${String(i+1).padStart(2,'0')}</div><div class="demo-step-title">${s.title}</div><div class="demo-step-desc">${s.desc}</div>`;
+    el.onclick = () => { demoIdx=i; renderDemoSteps(); renderDemoDetail(); };
+    wrap.appendChild(el);
+  });
+}
+
+function renderDemoDetail() {
+  const s = DEMO_STEPS[demoIdx];
+  document.getElementById('demo-step-title').textContent = s.title;
+  document.getElementById('demo-step-desc').textContent  = s.desc;
+  document.getElementById('demo-json-tx').innerHTML  = syntaxHL(JSON.stringify(s.tx, null, 2));
+  document.getElementById('demo-json-rx').innerHTML  = escHtml(s.rx);
+  const total = DEMO_STEPS.length;
+  document.getElementById('demo-counter').textContent = `${demoIdx+1} / ${total}`;
+  document.getElementById('demo-prog').style.width = ((demoIdx+1)/total*100)+'%';
+}
+
+function syntaxHL(json) {
+  return escHtml(json)
+    .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
+    .replace(/: "([^"]+)"/g, ': <span class="str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="num">$1</span>')
+    .replace(/: (true|false|null)/g, ': <span class="kw">$1</span>');
+}
+
+function demoPrev() {
+  if (demoIdx > 0) { demoIdx--; renderDemoSteps(); renderDemoDetail(); }
+}
+function demoNext() {
+  if (demoIdx < DEMO_STEPS.length-1) { demoIdx++; renderDemoSteps(); renderDemoDetail(); }
+}
+async function demoSend() {
+  const s = DEMO_STEPS[demoIdx];
+  await sendCmd(s.tx);
+  // log to exec log
+  const log  = document.getElementById('demo-exec-log');
+  const entry = document.createElement('div');
+  entry.className = 'demo-exp-entry';
+  entry.innerHTML = `<span class="dir-tx">▶ TX</span><span>${escHtml(JSON.stringify(s.tx))}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  toast('Sent: '+s.tx.cmd,'ok');
+  // advance after brief delay
+  setTimeout(() => {
+    if (demoIdx < DEMO_STEPS.length-1) { demoIdx++; renderDemoSteps(); renderDemoDetail(); }
+  }, 600);
+}
+
+// boot demo
+renderDemoSteps();
+renderDemoDetail();
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function setConnDot(state) {
+  const d = document.getElementById('conn-dot');
+  d.className = 'conn-dot'+(state==='connected'?' connected':state==='connecting'?' connecting':'');
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function toast(msg, type='ok') {
+  const wrap = document.getElementById('toasts');
+  const el   = document.createElement('div');
+  el.className='toast '+type; el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+</script>
+</body>
+</html>
