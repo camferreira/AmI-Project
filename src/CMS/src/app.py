@@ -11,28 +11,50 @@ Architecture
   templates/
     index.html   ← UI
 """
+import json
+import time
+import serial
+import serial.tools.list_ports
+import threading
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
 
-from flask import Flask
-from flask_socketio import SocketIO
+# ── App setup ────────────────────────────────────────────────
+app = Flask(__name__)
+app.config["SECRET_KEY"] = "sms-cms-secret"
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-import controllers
-from routes import register_routes
+# ── Serial state ─────────────────────────────────────────────
+ser = None
+serial_lock = threading.Lock()
+serial_connected = False
+serial_port = None
 
+# ── SMS node state (digital twin) ────────────────────────────
+node_state = {
+    "car": "—",
+    "train_state": "no_train",
+    "serial_status": "disconnected",
+    "zones": [
+        {"zone": 1, "r": 0, "g": 120, "b": 0, "label": "free", "kg": 0.0, "pct": 0},
+        {"zone": 2, "r": 0, "g": 120, "b": 0, "label": "free", "kg": 0.0, "pct": 0},
+        {"zone": 3, "r": 0, "g": 120, "b": 0, "label": "free", "kg": 0.0, "pct": 0},
+    ],
+}
 
-def create_app() -> tuple[Flask, SocketIO]:
-    """Application factory.  Returns (app, socketio) ready to run."""
-    app = Flask(__name__)
-    app.config["SECRET_KEY"] = "sms-cms-secret"
+event_log = []
+MAX_LOG = 200
 
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
-
-    # Wire routes (view layer)
-    register_routes(app, socketio)
-
-    # Boot controller (model + serial thread)
-    controllers.init_controller(socketio)
-
-    return app, socketio
+def log_event(direction: str, raw: str):
+    entry = {
+        "time": time.strftime("%H:%M:%S"),
+        "direction": direction,
+        "raw": raw.strip(),
+    }
+    event_log.append(entry)
+    if len(event_log) > MAX_LOG:
+        event_log.pop(0)
+    socketio.emit("log", entry)
 
 
 def apply_incoming(msg: dict):
