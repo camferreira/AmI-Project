@@ -1,43 +1,44 @@
 // ============================================================
-//  SMS – Station Management System  v3
-//  Hardware : Arduino Uno R3 + NeoPixel strip + 3x HX711
+//  SMS – Station Management System  v3  [SIMULATION BUILD]
+//  Hardware : Arduino Uno R3 + NeoPixel strip + 4x buttons
 //  Protocol : JSON over Serial (9600 baud, \n terminated)
-//  Libs     : ArduinoJson v6 (output only), NeoPixel, HX711
+//  Libs     : ArduinoJson v6 (output only), NeoPixel
 //
-//  RAM budget (Uno = 2048 bytes total):
-//    rxBuf          256 B   serial receive buffer
-//    Config struct   36 B   calibration + settings
-//    Zone state      57 B   3x (r,g,b + 16 char label)
-//    pixList         15 B   animation pixel order
-//    globals         ~30 B  breath, timers, counters
-//    libs + stack  ~800 B   NeoPixel, HX711, Arduino rt
-//    headroom       ~850 B  safe margin
+//  Simulation: HX711 load cells replaced by push buttons.
+//    BTN_ZONE[0..2] on pins 9,10,11 — add/remove one person
+//    BTN_MODE       on pin  12      — toggle add/subtract mode
+//    Each press adds or removes PERSON_WEIGHT kg from that zone.
 //
-//  Parsing strategy: read directly from rxBuf with lightweight
-//  helpers — zero heap allocation, zero ArduinoJson for input.
-//  ArduinoJson used only for output (small stack-local docs).
+//  All CMS commands remain fully functional.
+//  Parsing strategy: zero-alloc jStr/jInt/jFlt on rxBuf.
 // ============================================================
 
 #include <Adafruit_NeoPixel.h>
-#include <HX711.h>
 #include <EEPROM.h>
 #include <ArduinoJson.h>
 
 // ── NeoPixel ─────────────────────────────────────────────────
-#define STRIP_PIN   8
-#define NUM_PIXELS  19
+#define STRIP_PIN   2
+#define NUM_PIXELS  10
 Adafruit_NeoPixel strip(NUM_PIXELS, STRIP_PIN, NEO_GRB + NEO_KHZ800);
 
-const uint8_t ZONE_START[3] = { 1,  7, 13 };
-const uint8_t ZONE_END[3]   = { 5, 11, 17 };
+const uint8_t ZONE_START[3] = { 0, 3, 6 };
+const uint8_t ZONE_END[3]   = { 1, 4, 7 };
 
-// ── HX711 ────────────────────────────────────────────────────
-const uint8_t HX_DOUT[3] = { 2, 4, 6 };
-const uint8_t HX_SCK[3]  = { 3, 5, 7 };
-HX711 scale[3];
+// ── Button simulation ─────────────────────────────────────────
+// Zone buttons: press once = +1 person. Hold MODE then press = -1 person.
+const uint8_t BTN_ZONE[3] = { 9, 10, 11 };  // one button per zone
+const uint8_t BTN_MODE    = 12;              // toggle add/subtract
+
+#define PERSON_WEIGHT  70.0f   // kg per simulated passenger
+
+float  simWeight[3]  = { 0, 0, 0 };  // current simulated load per zone
+bool   lastBtn[3]    = { HIGH, HIGH, HIGH };
+bool   lastMode      = HIGH;
+bool   subtractMode  = false;
 
 // ── EEPROM ───────────────────────────────────────────────────
-#define EEPROM_MAGIC 0xAB
+#define EEPROM_MAGIC 0xAC
 #define EEPROM_ADDR  0
 
 struct Config {
@@ -48,6 +49,8 @@ struct Config {
   float    weightThreshold;
   uint16_t pushIntervalMs;
   uint8_t  brightness;
+  uint8_t  pctMedium;         // occupancy % threshold for medium band
+  uint8_t  pctFull;           // occupancy % threshold for full band
 };
 Config cfg;
 
@@ -56,11 +59,13 @@ void configDefaults() {
   strncpy(cfg.carId, "CAR1", sizeof(cfg.carId));
   for (uint8_t i = 0; i < 3; i++) {
     cfg.calibFactor[i] = 420.0f;
-    cfg.maxKg[i]       = 1.0f;
+    cfg.maxKg[i]       = 1050.0f;
   }
   cfg.weightThreshold = 2.0f;
   cfg.pushIntervalMs  = 0;
-  cfg.brightness      = 255;
+  cfg.brightness      = 128;
+  cfg.pctMedium       = 525;
+  cfg.pctFull         = 840;
 }
 void saveConfig() { EEPROM.put(EEPROM_ADDR, cfg); }
 void loadConfig() {
@@ -198,24 +203,41 @@ void parseAndApplyZones(const char* buf) {
 }
 
 // ============================================================
-//  Sensor helpers
+//  Sensor helpers  (simulation — buttons drive simWeight[])
 // ============================================================
 
-// Read raw ADC value once — single .read() call per reporting cycle.
-// Derive kg and pct from raw — never call .read() twice on the same zone.
+// raw = weight * calibFactor, matching real HX711 protocol exactly
 long readRaw(uint8_t z) {
-  if (!scale[z].is_ready()) return 0L;
-  return scale[z].read();
+  return (long)(simWeight[z] * cfg.calibFactor[z]);
 }
 
-float rawToKg(uint8_t z, long raw) {
-  if (raw <= 0) return 0.0f;
-  return (float)raw / cfg.calibFactor[z];
+// Ignore raw — return simulated weight directly
+float rawToKg(uint8_t z, long /*raw*/) {
+  return simWeight[z];
 }
 
 uint8_t kgToPct(uint8_t z, float kg) {
   if (kg <= 0) return 0;
-  return (uint8_t)constrain((int)((kg / cfg.maxKg[z]) * 100.0f), 0, 100);
+  return (uint8_t)constrain((int)((kg / 1050) * 100.0f), 0, 100);
+}
+
+// Map occupancy pct to color+label and update zone state.
+// Returns true if the band actually changed (LED needs refresh).
+bool applyOccupancyBand(uint8_t z, uint8_t pct) {
+  uint8_t r, g, b;
+  const char* lbl;
+  if (pct >= cfg.pctFull) {
+    r=120; g=0;  b=0;  lbl="full";
+  } else if (pct >= cfg.pctMedium) {
+    r=120; g=60; b=0;  lbl="medium";
+  } else {
+    r=0;   g=120; b=0; lbl="free";
+  }
+  // Only signal a change if the band actually shifted
+  if (zones[z].r==r && zones[z].g==g && zones[z].b==b) return false;
+  zones[z].r=r; zones[z].g=g; zones[z].b=b;
+  strncpy(zones[z].label, lbl, sizeof(zones[z].label)-1);
+  return true;
 }
 
 // ============================================================
@@ -318,6 +340,8 @@ void sendConfig() {
   doc[F("brightness")]       = cfg.brightness;
   doc[F("push_interval_ms")] = cfg.pushIntervalMs;
   doc[F("weight_threshold")] = FMT(cfg.weightThreshold);
+  doc[F("pct_medium")]        = cfg.pctMedium;
+  doc[F("pct_full")]          = cfg.pctFull;
   JsonArray arr = doc.createNestedArray(F("zones"));
   for (uint8_t z = 0; z < 3; z++) {
     JsonObject o = arr.createNestedObject();
@@ -336,7 +360,7 @@ void sendRaw() {
   for (uint8_t z = 0; z < 3; z++) {
     JsonObject o = arr.createNestedObject();
     o[F("zone")] = z + 1;
-    o[F("raw")]  = scale[z].is_ready() ? scale[z].read() : 0L;
+    o[F("raw")]  = readRaw(z);
   }
   serializeJson(doc, Serial); Serial.print('\n');
 }
@@ -471,14 +495,13 @@ void doSelftest() {
       strip.setPixelColor(p, strip.Color(255,255,255));
     strip.show(); delay(300);
     strip.clear(); strip.show(); delay(100);
-    bool  ok  = scale[z].is_ready();
-    long  raw = ok ? scale[z].read() : -1L;
-    float kg  = ok ? (float)raw / cfg.calibFactor[z] : 0.0f;
+    long  raw = readRaw(z);
+    float kg  = simWeight[z];
     if (z) Serial.print(',');
-    Serial.print(F("{\"zone\":"));   Serial.print(z+1);
-    Serial.print(F(",\"sensor_ok\":")); Serial.print(ok ? F("true") : F("false"));
-    Serial.print(F(",\"raw\":"));    Serial.print(raw);
-    Serial.print(F(",\"kg\":"));     Serial.print(FMT(kg));
+    Serial.print(F("{\"zone\":"));      Serial.print(z+1);
+    Serial.print(F(",\"sensor_ok\":true"));
+    Serial.print(F(",\"raw\":"));       Serial.print(raw);
+    Serial.print(F(",\"kg\":"));        Serial.print(FMT(kg));
     Serial.print('}');
   }
   Serial.println(F("]}"));
@@ -548,7 +571,7 @@ void handleCommand(const char* buf) {
     int z=0; float f=0;
     if (!jInt(buf,"zone",&z)||z<1||z>3) { sendAck(cmd,false,"invalid zone");   return; }
     if (!jFlt(buf,"factor",&f))         { sendAck(cmd,false,"missing factor"); return; }
-    cfg.calibFactor[z-1]=f; scale[z-1].set_scale(f);
+    cfg.calibFactor[z-1]=f; // simulation: no physical scale to update
     sendAck(cmd, true); return;
   }
 
@@ -583,16 +606,24 @@ void handleCommand(const char* buf) {
 
   if (strcmp_P(cmd, PSTR("TARE")) == 0) {
     int z=0;
-    if (jInt(buf,"zone",&z)&&z>=1&&z<=3) { scale[z-1].tare(); lastReportedKg[z-1]=0; }
-    else { for (uint8_t i=0;i<3;i++){scale[i].tare();lastReportedKg[i]=0;} }
+    if (jInt(buf,"zone",&z)&&z>=1&&z<=3) { simWeight[z-1]=0; lastReportedKg[z-1]=0; }
+    else { for (uint8_t i=0;i<3;i++){simWeight[i]=0;lastReportedKg[i]=0;} }
     sendAck(cmd,true); return;
+  }
+
+  if (strcmp_P(cmd, PSTR("SET_BANDS")) == 0) {
+    int medium=0, full=0;
+    if (!jInt(buf,"medium",&medium)) { sendAck(cmd,false,"missing medium"); return; }
+    if (!jInt(buf,"full",&full))     { sendAck(cmd,false,"missing full");   return; }
+    cfg.pctMedium = (uint8_t)constrain(medium, 1, 1050);
+    cfg.pctFull   = (uint8_t)constrain(full,   1, 1050);
+    sendAck(cmd, true); return;
   }
 
   if (strcmp_P(cmd, PSTR("SAVE_CONFIG")) == 0) { saveConfig(); sendAck(cmd,true); return; }
 
   if (strcmp_P(cmd, PSTR("LOAD_CONFIG")) == 0) {
     loadConfig();
-    for (uint8_t z=0;z<3;z++) scale[z].set_scale(cfg.calibFactor[z]);
     strip.setBrightness(cfg.brightness);
     sendAck(cmd,true); return;
   }
@@ -653,17 +684,13 @@ void setup() {
   strip.setBrightness(cfg.brightness);
   strip.clear(); strip.show();
 
+  for (uint8_t i=0; i<3; i++) pinMode(BTN_ZONE[i], INPUT_PULLUP);
+  pinMode(BTN_MODE, INPUT_PULLUP);
+
   animBoot();
   trainState=NO_TRAIN; breathVal=0; breathDir=1;
 
-  // this is blockin. sensor not pluged in mite not leave.
-  // for (uint8_t z=0; z<3; z++) {
-  //   scale[z].begin(HX_DOUT[z], HX_SCK[z]);
-  //   scale[z].set_scale(cfg.calibFactor[z]);
-  //   scale[z].tare();
-  // }
-
-  sendEvent("BOOT", "SMS ready");
+  sendEvent("BOOT", "SMS simulation ready");
 }
 
 void loop() {
@@ -677,6 +704,31 @@ void loop() {
     }
   }
 
+  // ── Button simulation ────────────────────────────────
+  {
+    bool modeNow = digitalRead(BTN_MODE);
+    if (modeNow == LOW && lastMode == HIGH) subtractMode = !subtractMode;
+    lastMode = modeNow;
+
+    for (uint8_t i = 0; i < 3; i++) {
+      bool btnNow = digitalRead(BTN_ZONE[i]);
+      if (btnNow == LOW && lastBtn[i] == HIGH) {
+        if (subtractMode)
+          simWeight[i] = max(0.0f, simWeight[i] - PERSON_WEIGHT);
+        else
+          simWeight[i] += PERSON_WEIGHT;
+        // Immediately apply band color if in service
+        if (trainState == IN_SERVICE) {
+          uint8_t pct = kgToPct(i, simWeight[i]);
+          if (applyOccupancyBand(i, pct)) { setZoneLeds(i); strip.show(); }
+        }
+        lastReportedKg[i] = simWeight[i];  // suppress duplicate event
+        sendWeightChangeEvent(i, simWeight[i]);
+      }
+      lastBtn[i] = btnNow;
+    }
+  }
+
   // ── Idle breath ─────────────────────────────────────
   updateBreath();
 
@@ -686,11 +738,16 @@ void loop() {
   if (now-lastChangeCheck>500 && trainState==IN_SERVICE) {
     lastChangeCheck=now;
     for (uint8_t z=0; z<3; z++) {
-      if (!scale[z].is_ready()) continue;
-      long  raw=readRaw(z);          // single read
-      float kg=rawToKg(z, raw);
-      if (abs(kg-lastReportedKg[z]) >= cfg.weightThreshold) {
-        lastReportedKg[z]=kg;
+      long    raw = readRaw(z);        // simulated read
+      float   kg  = rawToKg(z, raw);
+      uint8_t pct = kgToPct(z, kg);
+      if (abs(kg - lastReportedKg[z]) >= cfg.weightThreshold) {
+        lastReportedKg[z] = kg;
+        // Update LED color immediately if band changed
+        if (applyOccupancyBand(z, pct)) {
+          setZoneLeds(z);
+          strip.show();
+        }
         sendWeightChangeEvent(z, kg);
       }
     }

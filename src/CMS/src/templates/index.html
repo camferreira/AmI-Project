@@ -136,50 +136,6 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
 .sm-wrap { flex:1; display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto; }
 .sm-svg { max-width:900px; width:100%; height:auto; }
 
-/* ══════════════════════════════════════
-   TAB 3 — DEMO FLOW
-   ══════════════════════════════════════ */
-/* demo layout via .tpf-demo */
-
-.demo-layout { display:grid; grid-template-columns:340px 1fr; flex:1; overflow:hidden; }
-.demo-steps { padding:16px; border-right:1px solid var(--border); overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
-.demo-step { border:1px solid var(--border); border-radius:4px; padding:10px 12px; cursor:pointer; transition:all 0.2s; position:relative; }
-.demo-step:hover { border-color:var(--border2); }
-.demo-step.active { border-color:var(--accent); background:rgba(240,180,41,0.04); }
-.demo-step.done { border-color:var(--green); opacity:0.6; }
-.demo-step.done::after { content:'✓'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--green); font-family:var(--font-mono); font-size:12px; }
-.demo-step-num { font-family:var(--font-mono); font-size:10px; color:var(--text-mute); margin-bottom:2px; }
-.demo-step-title { font-family:var(--font-head); font-weight:600; font-size:13px; letter-spacing:0.05em; color:var(--text); }
-.demo-step-desc { font-size:11px; color:var(--text-dim); margin-top:3px; line-height:1.4; }
-.demo-step-phase { font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; }
-.phase-boot     { color:#64748b; }
-.phase-expected { color:var(--blue); }
-.phase-arriving { color:var(--accent); }
-.phase-service  { color:var(--green); }
-.phase-depart   { color:var(--amber); }
-
-.demo-right { display:flex; flex-direction:column; overflow:hidden; }
-.demo-detail { padding:20px; border-bottom:1px solid var(--border); }
-.demo-detail-title { font-family:var(--font-head); font-weight:700; font-size:18px; letter-spacing:0.05em; color:var(--text); margin-bottom:4px; }
-.demo-detail-desc  { font-size:13px; color:var(--text-dim); margin-bottom:14px; line-height:1.5; }
-.demo-json-label { font-family:var(--font-head); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-mute); margin-bottom:6px; }
-.demo-json { background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:12px 14px; font-family:var(--font-mono); font-size:12px; color:var(--accent2); line-height:1.7; white-space:pre; overflow-x:auto; }
-.demo-json .key   { color:#7dd3fc; }
-.demo-json .str   { color:#86efac; }
-.demo-json .num   { color:#fda4af; }
-.demo-json .kw    { color:var(--amber); }
-
-.demo-controls { display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--border); }
-.demo-progress { flex:1; height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
-.demo-progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.4s; }
-.demo-step-counter { font-family:var(--font-mono); font-size:11px; color:var(--text-mute); white-space:nowrap; }
-
-.demo-expected-log { flex:1; overflow-y:auto; padding:12px 20px; }
-.demo-exp-title { font-family:var(--font-head); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-mute); margin-bottom:8px; }
-.demo-exp-entry { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.03); display:flex; gap:10px; }
-.demo-exp-entry .dir-rx { color:var(--blue); }
-.demo-exp-entry .dir-tx { color:var(--amber); }
-
 /* ── Log sidebar (shared) ── */
 .log-wrap { flex:1; overflow-y:auto; padding:8px 0; scrollbar-width:thin; scrollbar-color:var(--border2) transparent; }
 .log-entry { display:grid; grid-template-columns:72px 16px 1fr; gap:6px; align-items:baseline; padding:3px 12px; font-family:var(--font-mono); font-size:10.5px; line-height:1.5; }
@@ -232,7 +188,6 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
 <nav class="tab-bar">
   <div class="tab active" data-tab="dashboard"><span class="tab-dot"></span>Dashboard</div>
   <div class="tab" data-tab="statemachine"><span class="tab-dot"></span>State Machine</div>
-  <div class="tab" data-tab="demo"><span class="tab-dot"></span>Demo Flow</div>
 </nav>
 
 <!-- ══════════════════════════════════════
@@ -352,7 +307,7 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'PUSH_OFF'})">Push Off</button>
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SAVE_CONFIG'})">Save Config</button>
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'LOAD_CONFIG'})">Load Config</button>
-      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SET_BANDS',medium:50,full:80})">Set Bands</button>
+      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SET_BANDS',medium:525,full:840})">Set Bands</button>
       <button class="cmd-btn c-danger" onclick="sendCmd({cmd:'RESET'})">Reset Node</button>
     </div>
 
@@ -730,140 +685,9 @@ async function loadPorts() {
 loadPorts();
 setInterval(loadPorts, 5000);
 
-// ══════════════════════════════════════════
-// DEMO FLOW
-// ══════════════════════════════════════════
-const DEMO_STEPS = [
-  { phase:'boot', title:'Ping Node', desc:'First thing the CMS does — check the node is alive. If no PONG in 2 seconds, mark offline.',
-    tx:{cmd:'PING'},
-    rx:'{"type":"PONG","car":"A3","uptime_ms":1243}' },
-  { phase:'boot', title:'Get Config', desc:'Fetch current calibration factors and settings. CMS checks if they match expected values.',
-    tx:{cmd:'GET_CONFIG'},
-    rx:'{"type":"CONFIG","car":"A3","brightness":255,"push_interval_ms":0,"weight_threshold":"2.00","pct_medium":50,"pct_full":80,"zones":[...]}' },
-  { phase:'boot', title:'Set Car ID', desc:'Assign this node its identity. Included in all subsequent responses.',
-    tx:{cmd:'SET_CAR_ID',id:'A3'},
-    rx:'{"type":"ACK","cmd":"SET_CAR_ID","status":"ok"}' },
-  { phase:'boot', title:'Tare Sensors', desc:'Zero all three load cells. Must be done with the platform empty.',
-    tx:{cmd:'TARE'},
-    rx:'{"type":"ACK","cmd":"TARE","status":"ok"}' },
-  { phase:'boot', title:'Save Config', desc:'Persist settings to EEPROM so they survive a power cycle.',
-    tx:{cmd:'SAVE_CONFIG'},
-    rx:'{"type":"ACK","cmd":"SAVE_CONFIG","status":"ok"}' },
-  { phase:'boot', title:'Selftest', desc:'Flash each zone LED and verify all three HX711 sensors respond. CMS must see sensor_ok:true on all zones before proceeding.',
-    tx:{cmd:'SELFTEST'},
-    rx:'{"type":"SELFTEST","car":"A3","zones":[{"zone":1,"sensor_ok":true,"raw":142,"kg":"0.34"},{"zone":2,"sensor_ok":true,"raw":98,"kg":"0.23"},{"zone":3,"sensor_ok":true,"raw":110,"kg":"0.26"}]}' },
-  { phase:'boot', title:'Get Status', desc:'Full snapshot sync for the dashboard. CMS now has the complete picture.',
-    tx:{cmd:'GET_STATUS'},
-    rx:'{"type":"STATUS","car":"A3","train_state":"no_train","zones":[{"zone":1,"r":0,"g":120,"b":0,"label":"free","kg":"0.00","pct":0},...]}' },
-
-  { phase:'expected', title:'Train Expected', desc:'Train A3 is 2 minutes out. CMS pushes predicted occupancy from the previous journey. LEDs show green/amber/red. Idle breath stops.',
-    tx:{cmd:'TRAIN_EXPECTED',zones:[{zone:1,r:0,g:120,b:0,label:'free'},{zone:2,r:120,g:60,b:0,label:'medium'},{zone:3,r:0,g:120,b:0,label:'free'}]},
-    rx:'{"type":"ACK","cmd":"TRAIN_EXPECTED","status":"ok"}' },
-
-  { phase:'arriving', title:'Train Arriving', desc:'Train enters the station from the left. White pixel sweep plays left→right. CMS waits for TRAIN_IN_SERVICE event before continuing.',
-    tx:{cmd:'TRAIN_ARRIVING',dir:'ltr'},
-    rx:'{"type":"ACK","cmd":"TRAIN_ARRIVING","status":"ok"}\n// ... animation plays ...\n{"type":"EVENT","event":"TRAIN_IN_SERVICE","car":"A3"}' },
-  { phase:'arriving', title:'Boarding Signal', desc:'Doors open. Double-pulse animation signals passengers to board.',
-    tx:{cmd:'TRAIN_BOARDING'},
-    rx:'{"type":"ACK","cmd":"TRAIN_BOARDING","status":"ok"}' },
-  { phase:'arriving', title:'Enable Push', desc:'Start periodic weight push every 3 seconds so CMS gets live load data during boarding.',
-    tx:{cmd:'SET_PUSH_INTERVAL',ms:3000},
-    rx:'{"type":"ACK","cmd":"SET_PUSH_INTERVAL","status":"ok"}' },
-
-  { phase:'service', title:'Weight Change — Medium', desc:'Passengers board zone 1. SMS detects weight crossing the medium threshold and fires an event. CMS updates the LED color.',
-    tx:{cmd:'SET_ZONE',zone:1,r:120,g:60,b:0,label:'medium'},
-    rx:'// Spontaneous event from SMS:\n{"type":"EVENT","event":"WEIGHT_CHANGE","car":"A3","zone":1,"kg":"52.10","pct":69}\n// CMS responds:\n{"type":"ACK","cmd":"SET_ZONE","status":"ok"}' },
-  { phase:'service', title:'Weight Change — Full', desc:'Zone 1 reaches capacity. CMS pushes red.',
-    tx:{cmd:'SET_ZONE',zone:1,r:120,g:0,b:0,label:'full'},
-    rx:'{"type":"ACK","cmd":"SET_ZONE","status":"ok"}' },
-  { phase:'service', title:'Dashboard Poll', desc:'CMS requests a full snapshot for the web dashboard refresh.',
-    tx:{cmd:'GET_STATUS'},
-    rx:'{"type":"STATUS","car":"A3","train_state":"in_service","zones":[{"zone":1,"r":120,"g":0,"b":0,"label":"full","kg":"71.20","pct":95},{"zone":2,"r":120,"g":60,"b":0,"label":"medium","kg":"48.30","pct":64},{"zone":3,"r":0,"g":120,"b":0,"label":"free","kg":"12.10","pct":16}]}' },
-
-  { phase:'depart', title:'Stop Push', desc:'Dwell timer expired. CMS stops the periodic weight push.',
-    tx:{cmd:'PUSH_OFF'},
-    rx:'{"type":"ACK","cmd":"PUSH_OFF","status":"ok"}' },
-  { phase:'depart', title:'Doors Closing', desc:'5× amber blink warns passengers. Zone colors restore after.',
-    tx:{cmd:'TRAIN_DOORS_CLOSING'},
-    rx:'{"type":"ACK","cmd":"TRAIN_DOORS_CLOSING","status":"ok"}' },
-  { phase:'depart', title:'Log Final Load', desc:'CMS records departure load for analytics before the train leaves.',
-    tx:{cmd:'GET_WEIGHT'},
-    rx:'{"type":"WEIGHT","car":"A3","zones":[{"zone":1,"raw":198400,"kg":"71.20","pct":95},{"zone":2,"raw":142000,"kg":"48.30","pct":64},{"zone":3,"raw":31200,"kg":"12.10","pct":16}]}' },
-  { phase:'depart', title:'Train Leaving', desc:'Pixels turn off one by one left→right. CMS waits for TRAIN_GONE, then loops back to expected state for next service.',
-    tx:{cmd:'TRAIN_LEAVING',dir:'ltr'},
-    rx:'{"type":"ACK","cmd":"TRAIN_LEAVING","status":"ok"}\n// ... animation plays ...\n{"type":"EVENT","event":"TRAIN_GONE","car":"A3"}' },
-];
-
 const PHASE_LABELS = {boot:'Boot / Handshake', expected:'Train Expected', arriving:'Arriving', service:'In Service', depart:'Departure'};
 const PHASE_CLASS  = {boot:'phase-boot', expected:'phase-expected', arriving:'phase-arriving', service:'phase-service', depart:'phase-depart'};
 
-let demoIdx = 0;
-
-function renderDemoSteps() {
-  const wrap = document.getElementById('demo-steps-list');
-  wrap.innerHTML = '';
-  let lastPhase = '';
-  DEMO_STEPS.forEach((s, i) => {
-    if (s.phase !== lastPhase) {
-      const ph = document.createElement('div');
-      ph.style.cssText = 'font-family:var(--font-head);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;padding:8px 4px 2px;color:var(--text-mute);border-top:1px solid var(--border);margin-top:4px;';
-      ph.textContent = PHASE_LABELS[s.phase] || s.phase;
-      if (lastPhase) wrap.appendChild(ph);
-      lastPhase = s.phase;
-    }
-    const el = document.createElement('div');
-    el.className = 'demo-step' + (i===demoIdx?' active':'') + (i<demoIdx?' done':'');
-    el.innerHTML = `<div class="demo-step-num">STEP ${String(i+1).padStart(2,'0')}</div><div class="demo-step-title">${s.title}</div><div class="demo-step-desc">${s.desc}</div>`;
-    el.onclick = () => { demoIdx=i; renderDemoSteps(); renderDemoDetail(); };
-    wrap.appendChild(el);
-  });
-}
-
-function renderDemoDetail() {
-  const s = DEMO_STEPS[demoIdx];
-  document.getElementById('demo-step-title').textContent = s.title;
-  document.getElementById('demo-step-desc').textContent  = s.desc;
-  document.getElementById('demo-json-tx').innerHTML  = syntaxHL(JSON.stringify(s.tx, null, 2));
-  document.getElementById('demo-json-rx').innerHTML  = escHtml(s.rx);
-  const total = DEMO_STEPS.length;
-  document.getElementById('demo-counter').textContent = `${demoIdx+1} / ${total}`;
-  document.getElementById('demo-prog').style.width = ((demoIdx+1)/total*100)+'%';
-}
-
-function syntaxHL(json) {
-  return escHtml(json)
-    .replace(/"([^"]+)":/g, '<span class="key">"$1"</span>:')
-    .replace(/: "([^"]+)"/g, ': <span class="str">"$1"</span>')
-    .replace(/: (\d+\.?\d*)/g, ': <span class="num">$1</span>')
-    .replace(/: (true|false|null)/g, ': <span class="kw">$1</span>');
-}
-
-function demoPrev() {
-  if (demoIdx > 0) { demoIdx--; renderDemoSteps(); renderDemoDetail(); }
-}
-function demoNext() {
-  if (demoIdx < DEMO_STEPS.length-1) { demoIdx++; renderDemoSteps(); renderDemoDetail(); }
-}
-async function demoSend() {
-  const s = DEMO_STEPS[demoIdx];
-  await sendCmd(s.tx);
-  // log to exec log
-  const log  = document.getElementById('demo-exec-log');
-  const entry = document.createElement('div');
-  entry.className = 'demo-exp-entry';
-  entry.innerHTML = `<span class="dir-tx">▶ TX</span><span>${escHtml(JSON.stringify(s.tx))}</span>`;
-  log.appendChild(entry);
-  log.scrollTop = log.scrollHeight;
-  toast('Sent: '+s.tx.cmd,'ok');
-  // advance after brief delay
-  setTimeout(() => {
-    if (demoIdx < DEMO_STEPS.length-1) { demoIdx++; renderDemoSteps(); renderDemoDetail(); }
-  }, 600);
-}
-
-// boot demo
-renderDemoSteps();
-renderDemoDetail();
 
 // ══════════════════════════════════════════
 // HELPERS
