@@ -315,6 +315,7 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
       <div class="cmd-cat-title">Train Lifecycle</div>
     </div>
     <div class="cmd-grid">
+      <!-- this needs to fetch the next train station data -->
       <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_EXPECTED',zones:[{zone:1,r:0,g:120,b:0,label:'free'},{zone:2,r:0,g:120,b:0,label:'free'},{zone:3,r:0,g:120,b:0,label:'free'}]})">Train Expected</button>
       <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_EXPECTED_CLEAR'})">Clear Expected</button>
       <button class="cmd-btn c-lc" onclick="sendCmd({cmd:'TRAIN_BOARDING'})">Boarding</button>
@@ -325,185 +326,6 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
       <button class="cmd-btn c-arr" onclick="sendCmd({cmd:'TRAIN_ARRIVING',dir:'rtl'})">◀ Arriving RTL</button>
       <button class="cmd-btn c-lev" onclick="sendCmd({cmd:'TRAIN_LEAVING',dir:'ltr'})">▶ Leaving LTR</button>
       <button class="cmd-btn c-lev" onclick="sendCmd({cmd:'TRAIN_LEAVING',dir:'rtl'})">◀ Leaving RTL</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════
-     TAB 2 — STATE MACHINE
-     ══════════════════════════════════════ -->
-<div id="tab-statemachine" class="tab-page-full tpf-statemachine">
-  <svg class="sm-svg" viewBox="0 0 860 520" xmlns="http://www.w3.org/2000/svg" font-family="'Share Tech Mono',monospace">
-    <defs>
-      <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <polygon points="0 0, 8 3, 0 6" fill="#2a3840"/>
-      </marker>
-      <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <polygon points="0 0, 8 3, 0 6" fill="#22c55e"/>
-      </marker>
-      <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
-      </marker>
-      <marker id="arr-amber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
-      </marker>
-      <marker id="arr-accent" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-        <polygon points="0 0, 8 3, 0 6" fill="#f0b429"/>
-      </marker>
-      <filter id="sm-glow">
-        <feGaussianBlur stdDeviation="3" result="b"/>
-        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-      </filter>
-    </defs>
-
-    <!-- Title -->
-    <text x="430" y="30" text-anchor="middle" font-family="'Barlow Condensed'" font-size="16" font-weight="700" fill="#4a6070" letter-spacing="4">SMS STATE MACHINE</text>
-
-    <!-- ── States ── -->
-    <!-- NO_TRAIN (left) -->
-    <g id="sm-no_train">
-      <rect x="30" y="200" width="150" height="64" rx="6" fill="#0d1117" stroke="#2a3840" stroke-width="1.5"/>
-      <rect x="30" y="200" width="150" height="4"  rx="3" fill="#4a6070"/>
-      <text x="105" y="228" text-anchor="middle" font-size="13" font-weight="bold" fill="#c8d8e8" letter-spacing="1">NO_TRAIN</text>
-      <text x="105" y="247" text-anchor="middle" font-size="9"  fill="#4a6070">idle breath · blue pulse</text>
-    </g>
-
-    <!-- EXPECTED -->
-    <g id="sm-expected">
-      <rect x="230" y="80" width="150" height="64" rx="6" fill="#0d1117" stroke="#3b82f6" stroke-width="1.5" filter="url(#sm-glow)"/>
-      <rect x="230" y="80" width="150" height="4"  rx="3" fill="#3b82f6"/>
-      <text x="305" y="108" text-anchor="middle" font-size="13" font-weight="bold" fill="#93c5fd" letter-spacing="1">EXPECTED</text>
-      <text x="305" y="127" text-anchor="middle" font-size="9"  fill="#4a6070">predicted colors shown</text>
-    </g>
-
-    <!-- ARRIVING -->
-    <g id="sm-arriving">
-      <rect x="460" y="80" width="150" height="64" rx="6" fill="#0d1117" stroke="#f0b429" stroke-width="1.5" filter="url(#sm-glow)"/>
-      <rect x="460" y="80" width="150" height="4"  rx="3" fill="#f0b429"/>
-      <text x="535" y="108" text-anchor="middle" font-size="13" font-weight="bold" fill="#fde68a" letter-spacing="1">ARRIVING</text>
-      <text x="535" y="127" text-anchor="middle" font-size="9"  fill="#4a6070">white pixel sweep →</text>
-    </g>
-
-    <!-- IN_SERVICE -->
-    <g id="sm-in_service">
-      <rect x="600" y="200" width="160" height="64" rx="6" fill="#0d1117" stroke="#22c55e" stroke-width="1.5" filter="url(#sm-glow)"/>
-      <rect x="600" y="200" width="160" height="4"  rx="3" fill="#22c55e"/>
-      <text x="680" y="228" text-anchor="middle" font-size="13" font-weight="bold" fill="#86efac" letter-spacing="1">IN_SERVICE</text>
-      <text x="680" y="247" text-anchor="middle" font-size="9"  fill="#4a6070">live weight · LED colors</text>
-    </g>
-
-    <!-- LEAVING -->
-    <g id="sm-leaving">
-      <rect x="460" y="340" width="150" height="64" rx="6" fill="#0d1117" stroke="#f59e0b" stroke-width="1.5" filter="url(#sm-glow)"/>
-      <rect x="460" y="340" width="150" height="4"  rx="3" fill="#f59e0b"/>
-      <text x="535" y="368" text-anchor="middle" font-size="13" font-weight="bold" fill="#fcd34d" letter-spacing="1">LEAVING</text>
-      <text x="535" y="387" text-anchor="middle" font-size="9"  fill="#4a6070">pixel-off sweep →</text>
-    </g>
-
-    <!-- ── BOOT arrow ── -->
-    <line x1="105" y1="140" x2="105" y2="198" stroke="#2a3840" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
-    <rect x="60" y="110" width="90" height="24" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="105" y="126" text-anchor="middle" font-size="9" fill="#4a6070">BOOT / RESET</text>
-
-    <!-- ── NO_TRAIN → EXPECTED ── -->
-    <path d="M180,220 Q205,145 228,120" fill="none" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-    <rect x="168" y="160" width="110" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="223" y="173" text-anchor="middle" font-size="9" fill="#93c5fd">TRAIN_EXPECTED</text>
-
-    <!-- ── EXPECTED → ARRIVING ── -->
-    <line x1="380" y1="112" x2="458" y2="112" fill="none" stroke="#f0b429" stroke-width="1.5" marker-end="url(#arr-accent)"/>
-    <rect x="384" y="98" width="72" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="420" y="111" text-anchor="middle" font-size="9" fill="#fde68a">TRAIN_ARRIVING</text>
-
-    <!-- ── NO_TRAIN → ARRIVING (direct) ── -->
-    <path d="M180,210 Q310,80 458,100" fill="none" stroke="#f0b429" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr-accent)"/>
-    <text x="295" y="62" text-anchor="middle" font-size="9" fill="#78716c">TRAIN_ARRIVING (direct)</text>
-
-    <!-- ── ARRIVING → IN_SERVICE ── -->
-    <path d="M610,112 Q640,160 660,198" fill="none" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
-    <rect x="622" y="145" width="78" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="661" y="158" text-anchor="middle" font-size="9" fill="#86efac">anim done →</text>
-    <text x="661" y="168" text-anchor="middle" font-size="8" fill="#4a6070">TRAIN_IN_SERVICE</text>
-
-    <!-- ── IN_SERVICE → LEAVING ── -->
-    <path d="M660,264 Q640,300 614,338" fill="none" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr-amber)"/>
-    <rect x="622" y="293" width="80" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="662" y="306" text-anchor="middle" font-size="9" fill="#fcd34d">TRAIN_LEAVING</text>
-
-    <!-- ── LEAVING → NO_TRAIN ── -->
-    <path d="M460,375 Q280,400 183,250" fill="none" stroke="#2a3840" stroke-width="1.5" marker-end="url(#arr)"/>
-    <rect x="276" y="408" width="78" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="315" y="421" text-anchor="middle" font-size="9" fill="#4a6070">anim done →</text>
-    <text x="315" y="431" text-anchor="middle" font-size="8" fill="#4a6070">TRAIN_GONE</text>
-
-    <!-- ── EXPECTED → NO_TRAIN (cancel) ── -->
-    <path d="M230,130 Q160,150 182,198" fill="none" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
-    <rect x="130" y="148" width="90" height="20" rx="3" fill="#080c10" stroke="#1e2836" stroke-width="1"/>
-    <text x="175" y="161" text-anchor="middle" font-size="9" fill="#fca5a5">EXPECTED_CLEAR</text>
-
-    <!-- ── Weight change loop on IN_SERVICE ── -->
-    <path d="M762,232 Q820,232 820,270 Q820,310 762,310 Q762,275 762,265" fill="none" stroke="#22c55e" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr-green)"/>
-    <text x="836" y="262" text-anchor="middle" font-size="8" fill="#4a6070" transform="rotate(90,836,270)">WEIGHT_CHANGE</text>
-    <text x="836" y="278" text-anchor="middle" font-size="8" fill="#4a6070" transform="rotate(90,836,278)">SET_ZONE / SET_ALL</text>
-
-    <!-- ── Legend ── -->
-    <g transform="translate(30,440)">
-      <rect x="0" y="0" width="800" height="60" rx="4" fill="#0d1117" stroke="#1e2836" stroke-width="1"/>
-      <text x="14" y="18" font-family="'Barlow Condensed'" font-size="10" font-weight="700" letter-spacing="3" fill="#2a3840">LEGEND</text>
-      <line x1="14" y1="28" x2="40" y2="28" stroke="#f0b429" stroke-width="2" marker-end="url(#arr-accent)"/>
-      <text x="46" y="32" font-size="9" fill="#4a6070">Lifecycle transition</text>
-      <line x1="160" y1="28" x2="186" y2="28" stroke="#f0b429" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-accent)"/>
-      <text x="192" y="32" font-size="9" fill="#4a6070">Optional path</text>
-      <line x1="290" y1="28" x2="316" y2="28" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
-      <text x="322" y="32" font-size="9" fill="#4a6070">Cancel / error path</text>
-      <line x1="450" y1="28" x2="476" y2="28" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr-green)"/>
-      <text x="482" y="32" font-size="9" fill="#4a6070">Self-loop (spontaneous event)</text>
-
-      <!-- State descriptions row 2 -->
-      <circle cx="15"  cy="48" r="4" fill="#4a6070"/>
-      <text x="24"  y="52" font-size="9" fill="#4a6070">no_train: breath idle</text>
-      <circle cx="155" cy="48" r="4" fill="#3b82f6"/>
-      <text x="164" cy="52" y="52" font-size="9" fill="#4a6070">expected: predicted colors</text>
-      <circle cx="310" cy="48" r="4" fill="#f0b429"/>
-      <text x="319" y="52" font-size="9" fill="#4a6070">arriving/leaving: animation</text>
-      <circle cx="470" cy="48" r="4" fill="#22c55e"/>
-      <text x="479" y="52" font-size="9" fill="#4a6070">in_service: live data + LEDs</text>
-    </g>
-
-    <!-- ── Current state highlight (updated by JS) ── -->
-    <rect id="sm-highlight" x="0" y="0" width="0" height="0" rx="6" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.15"/>
-  </svg>
-</div>
-
-<!-- ══════════════════════════════════════
-     TAB 3 — DEMO FLOW
-     ══════════════════════════════════════ -->
-<div id="tab-demo" class="tab-page-full tpf-demo">
-  <div class="demo-layout">
-    <!-- Steps list -->
-    <div class="demo-steps" id="demo-steps-list"></div>
-
-    <!-- Right panel -->
-    <div class="demo-right">
-      <div class="demo-detail" id="demo-detail">
-        <div class="demo-detail-title" id="demo-step-title">Select a step</div>
-        <div class="demo-detail-desc"  id="demo-step-desc">Choose a step from the left to see the command and expected response.</div>
-        <div class="demo-json-label">COMMAND  →  SMS</div>
-        <div class="demo-json" id="demo-json-tx">—</div>
-        <div class="demo-json-label" style="margin-top:12px">EXPECTED RESPONSE  ←  SMS</div>
-        <div class="demo-json" id="demo-json-rx">—</div>
-      </div>
-      <div class="demo-controls">
-        <button class="btn" id="demo-prev" onclick="demoPrev()">← Prev</button>
-        <button class="btn primary" id="demo-send" onclick="demoSend()">Send Command</button>
-        <button class="btn" id="demo-next" onclick="demoNext()">Next →</button>
-        <div class="demo-progress"><div class="demo-progress-fill" id="demo-prog"></div></div>
-        <span class="demo-step-counter" id="demo-counter">0 / 0</span>
-      </div>
-      <div class="demo-expected-log">
-        <div class="demo-exp-title">Step Execution Log</div>
-        <div id="demo-exec-log"></div>
-      </div>
     </div>
   </div>
 </div>
@@ -564,13 +386,15 @@ function updateZone(z) {
   const pct = typeof z.pct === 'number' ? z.pct : 0;
   const kg  = parseFloat(z.kg) || 0;
 
+  const color = kg >= 840 ? 'rgb(120,0,0)' : kg >= 525 ? 'rgb(120,60,0)' : 'rgb(0,120,0)';
+
   const led = document.getElementById(`z${i}-led`);
   if (led) {
     led.setAttribute('fill', hex);
     led.style.filter = (z.r||z.g||z.b) ? `drop-shadow(0 0 10px ${hex})` : '';
   }
   const card = document.getElementById(`zone-card-${i}`);
-  card.style.setProperty('--zone-color', col);
+  card.style.setProperty('--zone-color', color);
   card.style.borderColor = (z.r||z.g||z.b) ? `rgba(${z.r},${z.g},${z.b},0.35)` : '';
   document.getElementById(`zone-glow-${i}`).style.opacity = (z.r||z.g||z.b) ? '0.12' : '0';
 
@@ -579,6 +403,7 @@ function updateZone(z) {
   pill.style.color = pill.style.borderColor = col;
 
   document.getElementById(`z${i}-kg`).innerHTML = `${kg.toFixed(2)} <span>kg</span>`;
+  document.getElementById(`z${i}-bar`).style.background = color;
   document.getElementById(`z${i}-bar`).style.width = pct + '%';
   document.getElementById(`z${i}-pct`).textContent = pct + '%';
 }
@@ -595,26 +420,6 @@ document.querySelectorAll('.tab').forEach(t => {
     document.getElementById(id).classList.add('active');
   });
 });
-
-// ══════════════════════════════════════════
-// STATE MACHINE HIGHLIGHT
-// ══════════════════════════════════════════
-const SM_RECTS = {
-  no_train:   {x:30,  y:200, w:150, h:64},
-  expected:   {x:230, y:80,  w:150, h:64},
-  arriving:   {x:460, y:80,  w:150, h:64},
-  in_service: {x:600, y:200, w:160, h:64},
-  leaving:    {x:460, y:340, w:150, h:64},
-};
-function smHighlight(state) {
-  const r = SM_RECTS[state];
-  const el = document.getElementById('sm-highlight');
-  if (!r || !el) return;
-  el.setAttribute('x', r.x - 4);
-  el.setAttribute('y', r.y - 4);
-  el.setAttribute('width',  r.w + 8);
-  el.setAttribute('height', r.h + 8);
-}
 
 // ══════════════════════════════════════════
 // LOG
