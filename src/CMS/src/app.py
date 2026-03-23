@@ -115,12 +115,13 @@ def serial_reader():
             try:
                 line = ser.readline().decode("utf-8", errors="replace").strip()
                 if line:
+                    print(f"DEBUG [SERIAL RX]: {line}") # <--- ADD THIS LINE
                     log_event("rx", line)
                     try:
                         msg = json.loads(line)
                         apply_incoming(msg)
                     except json.JSONDecodeError:
-                        pass
+                        print(f"DEBUG [JSON ERROR]: Could not parse: {line}") # <--- AND THIS
             except (serial.SerialException, OSError):
                 serial_connected = False
                 node_state["serial_status"] = "disconnected"
@@ -163,6 +164,7 @@ def connect_serial():
     port = data.get("port")
     baud = data.get("baud", 9600)
     try:
+        print(f"DEBUG [FLASK]: Attempting to open {port} at {baud} baud...")
         with serial_lock:
             if ser and ser.is_open:
                 ser.close()
@@ -175,11 +177,15 @@ def connect_serial():
         time.sleep(1.5)  # let Arduino settle after DTR reset
         send_command({"cmd": "PING"})
         time.sleep(0.3)
+        
+        print(f"DEBUG [FLASK]: Sending GET_STATUS...")
         send_command({"cmd": "GET_STATUS"})
+        
+        print(f"DEBUG [FLASK]: Connection sequence finished.")
         return jsonify({"ok": True})
     except serial.SerialException as e:
+        print(f"DEBUG [FLASK]: Connection failed! Error: {e}")
         return jsonify({"ok": False, "error": str(e)}), 400
-
 
 @app.route("/api/disconnect", methods=["POST"])
 def disconnect_serial():
