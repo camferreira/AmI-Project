@@ -23,15 +23,19 @@ CRGB leds[NUM_LEDS];
 const uint8_t ZONE_START[3] = { 1, 26, 51 };
 const uint8_t ZONE_END[3]   = { 23, 48, 74 };
 
-// ── Button simulation ─────────────────────────────────────────
-const uint8_t BTN_ZONE[3] = { 9, 10, 11 };
-const uint8_t BTN_MODE    = 12;
-#define PERSON_WEIGHT 70.0f
+// ── Load cells (HX711) ─────────────────────────────────────
+#define LC_COUNT  3
+#define LC_DOUT_0  3    // Zone 1 — change pins to match your wiring
+#define LC_CLK_0   4
+#define LC_DOUT_1  5    // Zone 2
+#define LC_CLK_1   6
+#define LC_DOUT_2  7    // Zone 3
+#define LC_CLK_2   8
 
-float simWeight[3] = { 0, 0, 0 };
-bool  lastBtn[3]   = { HIGH, HIGH, HIGH };
-bool  lastMode     = HIGH;
-bool  subtractMode = false;
+#define LC_SCALE   420.0f  // raw / kg — calibrate per cell
+
+HX711 scale[3];
+float sensorWeight[3] = { 0, 0, 0 };
 
 // ── EEPROM ───────────────────────────────────────────────────
 #define EEPROM_MAGIC 0xAC
@@ -440,8 +444,17 @@ void setup() {
   fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
 
-  for (uint8_t i = 0; i < 3; i++) pinMode(BTN_ZONE[i], INPUT_PULLUP);
-  pinMode(BTN_MODE, INPUT_PULLUP);
+  scale[0].begin(LC_DOUT_0, LC_CLK_0);  
+  scale[0].set_scale(LC_SCALE);  
+  scale[0].tare();
+
+  scale[1].begin(LC_DOUT_1, LC_CLK_1);  
+  scale[1].set_scale(LC_SCALE);  
+  scale[1].tare();
+
+  scale[2].begin(LC_DOUT_2, LC_CLK_2);  
+  scale[2].set_scale(LC_SCALE);  
+  scale[2].tare();
 
   animBoot();
   trainState = NO_TRAIN;
@@ -465,39 +478,24 @@ void loop() {
     }
   }
 
-  // ── Button simulation ────────────────────────────────
-  bool modeNow = digitalRead(BTN_MODE);
-  if (modeNow == LOW && lastMode == HIGH) subtractMode = !subtractMode;
-  lastMode = modeNow;
-
-  for (uint8_t i = 0; i < 3; i++) {
-    bool btnNow = digitalRead(BTN_ZONE[i]);
-    if (btnNow == LOW && lastBtn[i] == HIGH) {
-      if (subtractMode)
-        simWeight[i] = max(0.0f, simWeight[i] - PERSON_WEIGHT);
-      else
-        simWeight[i] += PERSON_WEIGHT;
-      if (trainState == IN_SERVICE) {
-        uint8_t pct = kgToPct(i, simWeight[i]);
-        if (applyOccupancyBand(i, pct)) { setZoneLeds(i); FastLED.show(); }
-      }
-      Serial.print(F("{\"type\":\"EVENT\",\"event\":\"WEIGHT_CHANGE\",\"car\":\""));
-      Serial.print(cfg.carId);
-      Serial.print(F("\",\"zone\":"));  Serial.print(i + 1);
-      Serial.print(F(",\"kg\":"));      Serial.print(FMT(simWeight[i]));
-      Serial.print(F(",\"pct\":"));     Serial.print(kgToPct(i, simWeight[i]));
-      Serial.println('}');
-    }
-    lastBtn[i] = btnNow;
-  }
-
   // ── Weight-change detection ──────────────────────────
   static unsigned long lastCheck = 0;
   unsigned long now = millis();
   if (now - lastCheck > 500 && trainState == IN_SERVICE) {
     lastCheck = now;
     for (uint8_t z = 0; z < 3; z++) {
-      uint8_t pct = kgToPct(z, simWeight[z]);
+      if (!scale[z].is_ready()) continue;
+      float kg = max(0.0f, scale[z].get_units(1));
+      if (fabsf(kg - sensorWeight[z]) > 0.2f) {  
+        sensorWeight[z] = kg;
+        Serial.print(F("{\"type\":\"EVENT\",\"event\":\"WEIGHT_CHANGE\",\"car\":\""));
+        Serial.print(cfg.carId);
+        Serial.print(F("\",\"zone\":"));  Serial.print(z + 1);
+        Serial.print(F(",\"kg\":"));      Serial.print(FMT(kg));
+        Serial.print(F(",\"pct\":"));     Serial.print(kgToPct(z, kg));
+        Serial.println('}');
+      }
+      uint8_t pct = kgToPct(z, sensorWeight[z]);
       if (applyOccupancyBand(z, pct)) {
         setZoneLeds(z);
         FastLED.show();
