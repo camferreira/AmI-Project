@@ -11,6 +11,7 @@
 
 #include <FastLED.h>
 #include <EEPROM.h>
+#include <HX711.h>
 
 // ── FastLED ──────────────────────────────────────────────────
 #define LED_PIN     2
@@ -32,7 +33,7 @@ const uint8_t ZONE_END[3]   = { 23, 48, 74 };
 #define LC_DOUT_2  7    // Zone 3
 #define LC_CLK_2   8
 
-#define LC_SCALE   420.0f  // raw / kg — calibrate per cell
+#define LC_SCALE   7050  // raw / kg — calibrate per cell
 
 HX711 scale[3];
 float sensorWeight[3] = { 0, 0, 0 };
@@ -258,7 +259,7 @@ void sendStatus() {
   Serial.print(trainStateStr());
   Serial.print(F("\",\"zones\":["));
   for (uint8_t z = 0; z < 3; z++) {
-    float   kg  = simWeight[z];
+    float   kg  = sensorWeight[z];
     uint8_t pct = kgToPct(z, kg);
     if (z) Serial.print(',');
     Serial.print(F("{\"zone\":"));     Serial.print(z + 1);
@@ -327,8 +328,8 @@ void doSelftest() {
     if (z) Serial.print(',');
     Serial.print(F("{\"zone\":"));      Serial.print(z + 1);
     Serial.print(F(",\"sensor_ok\":true,\"kg\":"));
-    Serial.print(FMT(simWeight[z]));
-    Serial.print(F(",\"pct\":"));       Serial.print(kgToPct(z, simWeight[z]));
+    Serial.print(FMT(sensorWeight[z]));
+    Serial.print(F(",\"pct\":"));       Serial.print(kgToPct(z, sensorWeight[z]));
     Serial.print('}');
   }
   Serial.println(F("]}"));
@@ -350,6 +351,24 @@ void handleCommand(const char* buf) {
   if (strcmp_P(cmd, PSTR("PING"))       == 0) { sendPong();   return; }
   if (strcmp_P(cmd, PSTR("GET_STATUS")) == 0) { sendStatus(); return; }
   if (strcmp_P(cmd, PSTR("SELFTEST"))   == 0) { doSelftest(); return; }
+
+  if (strcmp_P(cmd, PSTR("GET_WEIGHT")) == 0) {
+    Serial.print(F("{\"type\":\"WEIGHT\",\"zones\":["));
+    for (uint8_t z = 0; z < 3; z++) {
+      // FORCE a fresh reading for the UI request
+      if (scale[z].is_ready()) {
+          sensorWeight[z] = max(0.0f, scale[z].get_units(5)); 
+      }
+      
+      if (z) Serial.print(',');
+      Serial.print(F("{\"zone\":")); Serial.print(z + 1);
+      Serial.print(F(",\"kg\":"));   Serial.print(FMT(sensorWeight[z]));
+      Serial.print(F(",\"pct\":"));  Serial.print(kgToPct(z, sensorWeight[z]));
+      Serial.print(F("}"));
+    }
+    Serial.println(F("]}"));
+    return;
+  }
 
   // ── LED control ───────────────────────────────────────
   if (strcmp_P(cmd, PSTR("SET_ZONE")) == 0) {
@@ -436,29 +455,48 @@ void handleCommand(const char* buf) {
 
 void setup() {
   Serial.begin(9600);
+  // Wait a moment for the serial port to initialize
+  delay(50); 
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Starting setup()\"}"));
 
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Loading config...\"}"));
   loadConfig();
 
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Initializing FastLED...\"}"));
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(cfg.brightness);
   fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
 
+  // --- SCALE 0 ---
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 0...\"}"));
   scale[0].begin(LC_DOUT_0, LC_CLK_0);  
   scale[0].set_scale(LC_SCALE);  
-  scale[0].tare();
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 0 (Will block if no hardware)...\"}"));
+  // scale[0].tare();
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 0 Tare Complete.\"}"));
 
+  // --- SCALE 1 ---
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 1...\"}"));
   scale[1].begin(LC_DOUT_1, LC_CLK_1);  
   scale[1].set_scale(LC_SCALE);  
-  scale[1].tare();
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 1...\"}"));
+  // scale[1].tare();
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 1 Tare Complete.\"}"));
 
+  // --- SCALE 2 ---
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 2...\"}"));
   scale[2].begin(LC_DOUT_2, LC_CLK_2);  
   scale[2].set_scale(LC_SCALE);  
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 2...\"}"));
   scale[2].tare();
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 2 Tare Complete.\"}"));
 
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Running animBoot...\"}"));
   animBoot();
   trainState = NO_TRAIN;
 
+  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"setup() Complete, sending BOOT event.\"}"));
   sendEvent("BOOT");
 }
 
@@ -481,12 +519,19 @@ void loop() {
   // ── Weight-change detection ──────────────────────────
   static unsigned long lastCheck = 0;
   unsigned long now = millis();
-  if (now - lastCheck > 500 && trainState == IN_SERVICE) {
+  
+  if (now - lastCheck > 500) { // Reads every 500ms regardless of train state
     lastCheck = now;
+    
     for (uint8_t z = 0; z < 3; z++) {
       if (!scale[z].is_ready()) continue;
-      float kg = max(0.0f, scale[z].get_units(1));
-      if (fabsf(kg - sensorWeight[z]) > 0.2f) {  
+      float raw = scale[z].get_units(1);
+      
+      // Get reading (average of 2 for stability)
+      float kg = raw; //max(0.0f, scale[z].get_units(2));
+
+      // Only send event if weight changed significantly (> 0.1kg)
+      if (fabsf(kg - sensorWeight[z]) > 0.1f) {  
         sensorWeight[z] = kg;
         Serial.print(F("{\"type\":\"EVENT\",\"event\":\"WEIGHT_CHANGE\",\"car\":\""));
         Serial.print(cfg.carId);
@@ -495,10 +540,14 @@ void loop() {
         Serial.print(F(",\"pct\":"));     Serial.print(kgToPct(z, kg));
         Serial.println('}');
       }
-      uint8_t pct = kgToPct(z, sensorWeight[z]);
-      if (applyOccupancyBand(z, pct)) {
-        setZoneLeds(z);
-        FastLED.show();
+      
+      // Update LEDs ONLY if the train is actually there
+      if (trainState == IN_SERVICE || trainState == EXPECTED) {
+        uint8_t pct = kgToPct(z, sensorWeight[z]);
+        if (applyOccupancyBand(z, pct)) {
+          setZoneLeds(z);
+          FastLED.show();
+        }
       }
     }
   }
