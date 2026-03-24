@@ -172,8 +172,7 @@ def connect_serial():
             serial_port = port
             node_state["serial_status"] = "connected"
         socketio.emit("state", node_state)
-        # Ask for immediate status sync
-        time.sleep(1.5)  # let Arduino settle after DTR reset
+        time.sleep(1.5)  
         send_command({"cmd": "PING"})
         time.sleep(0.3)
         
