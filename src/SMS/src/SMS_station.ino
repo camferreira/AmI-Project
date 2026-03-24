@@ -544,11 +544,6 @@ void loop() {
       // Update LEDs ONLY if the train is actually there
       if (trainState == IN_SERVICE || trainState == EXPECTED) {
         uint8_t pct = kgToPct(z, sensorWeight[z]);
-        Serial.print(F("Zone ")); Serial.print(z);
-        Serial.print(F(" pct=")); Serial.print(pct);
-        Serial.print(F(" r=")); Serial.print(zones[z].r);
-        Serial.print(F(" g=")); Serial.print(zones[z].g);
-        Serial.println();
         if (applyOccupancyBand(z, pct)) {
           setZoneLeds(z);
           FastLED.show();
