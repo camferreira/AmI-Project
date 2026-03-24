@@ -90,14 +90,13 @@ def apply_incoming(msg: dict):
             idx = msg["zone"] - 1
             node_state["zones"][idx]["kg"]  = msg.get("kg", 0)
             node_state["zones"][idx]["pct"] = msg.get("pct", 0)
-            # Map pct to color (mirrors SMS band logic)
             pct = msg.get("pct", 0)
-            if pct >= 840:
-                node_state["zones"][idx].update({"r": 120, "g": 0,   "b": 0,   "label": "full"})
-            elif pct >= 525:
-                node_state["zones"][idx].update({"r": 120, "g": 60,  "b": 0,   "label": "medium"})
+            if pct >= 80:
+                node_state["zones"][idx].update({"r": 120, "g": 0,  "b": 0, "label": "full"})
+            elif pct >= 40:
+                node_state["zones"][idx].update({"r": 120, "g": 60, "b": 0, "label": "medium"})
             else:
-                node_state["zones"][idx].update({"r": 0,   "g": 120, "b": 0,   "label": "free"})
+                node_state["zones"][idx].update({"r": 0, "g": 120,  "b": 0, "label": "free"})
 
     elif t == "PONG":
         node_state["car"] = msg.get("car", node_state["car"])

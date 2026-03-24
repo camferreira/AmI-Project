@@ -303,8 +303,6 @@ header { grid-area:header; display:flex; align-items:center; gap:24px; padding:0
     </div>
     <div class="cmd-grid">
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'TARE'})">Tare All</button>
-      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'PUSH_ON'})">Push On</button>
-      <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'PUSH_OFF'})">Push Off</button>
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SAVE_CONFIG'})">Save Config</button>
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'LOAD_CONFIG'})">Load Config</button>
       <button class="cmd-btn c-cfg" onclick="sendCmd({cmd:'SET_BANDS',medium:525,full:840})">Set Bands</button>
@@ -386,7 +384,7 @@ function updateZone(z) {
   const pct = typeof z.pct === 'number' ? z.pct : 0;
   const kg  = parseFloat(z.kg) || 0;
 
-  const color = kg >= 840 ? 'rgb(120,0,0)' : kg >= 525 ? 'rgb(120,60,0)' : 'rgb(0,120,0)';
+  const color = kg >= 0.84 ? 'rgb(120,0,0)' : kg >= 0.525 ? 'rgb(120,60,0)' : 'rgb(0,120,0)';
 
   const led = document.getElementById(`z${i}-led`);
   if (led) {
