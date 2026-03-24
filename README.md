@@ -1,6 +1,6 @@
 # Station Management System (SMS/CMS) — Project Overview
 
-> **Version:** 4.0 — Simulation Build  
+> **Version:** 2.0 — Simulation Build  
 > **Architecture:** Distributed embedded + web  
 > **Protocol:** JSON over Serial (9600 baud, `\n` terminated)
 
