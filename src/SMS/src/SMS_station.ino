@@ -457,46 +457,30 @@ void setup() {
   Serial.begin(9600);
   // Wait a moment for the serial port to initialize
   delay(50); 
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Starting setup()\"}"));
-
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Loading config...\"}"));
   loadConfig();
 
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Initializing FastLED...\"}"));
   FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setBrightness(cfg.brightness);
   fill_solid(leds, NUM_LEDS, CRGB::Black);
   FastLED.show();
 
   // --- SCALE 0 ---
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 0...\"}"));
   scale[0].begin(LC_DOUT_0, LC_CLK_0);  
   scale[0].set_scale(LC_SCALE);  
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 0 (Will block if no hardware)...\"}"));
   scale[0].tare();
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 0 Tare Complete.\"}"));
 
   // --- SCALE 1 ---
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 1...\"}"));
   scale[1].begin(LC_DOUT_1, LC_CLK_1);  
   scale[1].set_scale(LC_SCALE);  
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 1...\"}"));
-  // scale[1].tare();
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 1 Tare Complete.\"}"));
+  scale[1].tare();
 
   // --- SCALE 2 ---
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Init Scale 2...\"}"));
   scale[2].begin(LC_DOUT_2, LC_CLK_2);  
   scale[2].set_scale(LC_SCALE);  
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 2...\"}"));
-  // scale[2].tare();
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 2 Tare Complete.\"}"));
+  scale[2].tare();
 
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Running animBoot...\"}"));
   animBoot();
   trainState = NO_TRAIN;
-
-  Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"setup() Complete, sending BOOT event.\"}"));
   sendEvent("BOOT");
 }
 
@@ -530,7 +514,7 @@ void loop() {
       // Get reading (average of 2 for stability)
       float kg = raw; //max(0.0f, scale[z].get_units(2));
 
-      // Only send event if weight changed significantly (> 0.1kg)
+      // Only send event if weight changed significantly
       if (fabsf(kg - sensorWeight[z]) > 0.01f) {  
         sensorWeight[z] = kg;
         Serial.print(F("{\"type\":\"EVENT\",\"event\":\"WEIGHT_CHANGE\",\"car\":\""));
