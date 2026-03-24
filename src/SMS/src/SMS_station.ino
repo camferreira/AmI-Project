@@ -55,7 +55,7 @@ Config cfg;
 void configDefaults() {
   cfg.magic     = EEPROM_MAGIC;
   strncpy(cfg.carId, "CAR1", sizeof(cfg.carId));
-  for (uint8_t i = 0; i < 3; i++) cfg.maxKg[i] = 1050.0f;
+  for (uint8_t i = 0; i < 3; i++) cfg.maxKg[i] = .010f;
   cfg.brightness = 128;
   cfg.pctMedium  = 40;
   cfg.pctFull    = 80;
@@ -162,7 +162,7 @@ void parseAndApplyZones(const char* buf) {
 
 uint8_t kgToPct(uint8_t z, float kg) {
   if (kg <= 0) return 0;
-  return (uint8_t)constrain((int)((kg / cfg.maxKg[z]) * 100.0f), 0, 100);
+  return (uint8_t)constrain((int)((kg / 1.5f) * 100.0f), 0, 100);
 }
 
 bool applyOccupancyBand(uint8_t z, uint8_t pct) {
@@ -473,7 +473,7 @@ void setup() {
   scale[0].begin(LC_DOUT_0, LC_CLK_0);  
   scale[0].set_scale(LC_SCALE);  
   Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 0 (Will block if no hardware)...\"}"));
-  // scale[0].tare();
+  scale[0].tare();
   Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 0 Tare Complete.\"}"));
 
   // --- SCALE 1 ---
@@ -489,7 +489,7 @@ void setup() {
   scale[2].begin(LC_DOUT_2, LC_CLK_2);  
   scale[2].set_scale(LC_SCALE);  
   Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Taring Scale 2...\"}"));
-  scale[2].tare();
+  // scale[2].tare();
   Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Scale 2 Tare Complete.\"}"));
 
   Serial.println(F("{\"type\":\"DEBUG\",\"msg\":\"Running animBoot...\"}"));
@@ -531,7 +531,7 @@ void loop() {
       float kg = raw; //max(0.0f, scale[z].get_units(2));
 
       // Only send event if weight changed significantly (> 0.1kg)
-      if (fabsf(kg - sensorWeight[z]) > 0.1f) {  
+      if (fabsf(kg - sensorWeight[z]) > 0.01f) {  
         sensorWeight[z] = kg;
         Serial.print(F("{\"type\":\"EVENT\",\"event\":\"WEIGHT_CHANGE\",\"car\":\""));
         Serial.print(cfg.carId);
@@ -544,6 +544,11 @@ void loop() {
       // Update LEDs ONLY if the train is actually there
       if (trainState == IN_SERVICE || trainState == EXPECTED) {
         uint8_t pct = kgToPct(z, sensorWeight[z]);
+        Serial.print(F("Zone ")); Serial.print(z);
+        Serial.print(F(" pct=")); Serial.print(pct);
+        Serial.print(F(" r=")); Serial.print(zones[z].r);
+        Serial.print(F(" g=")); Serial.print(zones[z].g);
+        Serial.println();
         if (applyOccupancyBand(z, pct)) {
           setZoneLeds(z);
           FastLED.show();
